@@ -6,7 +6,7 @@ import bpy
 from bpy.types import (
     Header,
     Menu,
-    Panel,
+    OperatorProperties, Panel,
     SurfaceCurve
 )
 from bl_ui.properties_paint_common import (
@@ -6073,15 +6073,438 @@ class VIEW3D_MT_edit_pointcloud(Menu):
         layout.operator("pointcloud.separate")
         layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
+# region TODO Operators, move them to their own file
+
+from typing import Final
+
+
+
+TD_object_types: Final[set[str]] = {
+    "MESH",
+    "CURVE",
+    "SURFACE",
+    "META",
+    "FONT",
+    "CURVES",
+    "POINTCLOUD",
+    "VOLUME",
+    "GPENCIL",
+    "GREASEPENCIL",
+    "ARMATURE",
+    "LATTICE",
+    "EMPTY",
+    "LIGHT",
+    "LIGHT_PROBE",
+    "CAMERA",
+    "SPEAKER",
+}
+
+
+class ALX_OT_ObjectMode_SetToObject(bpy.types.Operator):
+    bl_label = ""
+    bl_idname = "alx.operator_set_to_object_mode"
+    bl_options = {"REGISTER"}
+
+
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode="OBJECT")
+        return {"FINISHED"}
+
+
+class ALX_OT_ObjectMode_SetToPose(bpy.types.Operator):
+    bl_label = ""
+    bl_idname = "alx.operator_set_to_pose_mode"
+    bl_options = {"REGISTER"}
+
+
+    def execute(self, context):
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+        if len(context.selected_objects) > 0:
+            armatures = filter(
+                lambda obj: obj is not None,
+                [
+                    selected_object if (selected_object.type == "ARMATURE") else selected_object.find_armature()
+                    for selected_object in context.selected_objects
+                    if (selected_object.type in ["MESH", "ARMATURE"])
+                ],
+            )
+
+            for armature in armatures:
+                armature.hide_set(False, view_layer=context.view_layer)
+                armature.hide_viewport = False
+
+                armature.select_set(True, view_layer=context.view_layer)
+
+            bpy.ops.object.mode_set(mode="POSE")
+
+        return {"FINISHED"}
+
+
+class ALX_OT_ObjectMode_SetToPaintWeight(bpy.types.Operator):
+    bl_label = ""
+    bl_idname = "alx.operator_set_to_paint_weight_mode"
+    bl_options = {"REGISTER"}
+
+
+    def execute(self, context):
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+        if len(context.selected_objects) > 0:
+            mesh = None
+            armature = None
+
+            if context.active_object.type == "MESH":
+
+                mesh = context.active_object
+                armature = context.active_object.find_armature()
+                if armature is not None:
+                    armature.hide_set(False, view_layer=context.view_layer)
+                    armature.hide_viewport = False
+
+                    armature.select_set(True, view_layer=context.view_layer)
+                else:
+                    return {"CANCELLED"}
+
+            else:
+                if context.active_object.type == "ARMATURE":
+                    for selected_object in context.selected_objects:
+                        if selected_object.type == "MESH":
+                            mesh = selected_object
+                            armature = selected_object.find_armature()
+
+                            if (armature is not None) and (armature is context.active_object):
+                                armature.select_set(True, view_layer=context.view_layer)
+                                context.view_layer.objects.active = selected_object
+                                break
+
+            if (armature is not None) or (mesh is not None):
+                bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
+
+        return {"FINISHED"}
+
+
+class ALX_OT_ObjectMode_SetToEditMesh(bpy.types.Operator):
+    bl_label = ""
+    bl_idname = "alx.operator_set_to_edit_mesh_mode"
+    bl_options = {"REGISTER"}
+
+    target_selection_mode: bpy.props.StringProperty(name="", default="", options={"HIDDEN"})  # type: ignore
+
+
+    def execute(self, context):
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+        if len(context.selected_objects) > 0 and self.target_selection_mode in ["VERT", "EDGE", "FACE"]:
+            for selected_object in context.selected_objects:
+                if selected_object.type != "MESH":
+                    selected_object.select_set(False, view_layer=context.view_layer)
+            else:
+                if context.active_object is not None and context.active_object.type != "MESH":
+                    context.view_layer.objects.active = context.selected_objects[0]
+
+            if context.active_object is not None and context.active_object.type == "MESH":
+                bpy.ops.object.mode_set_with_submode(mode="EDIT", mesh_select_mode={self.target_selection_mode})
+        return {"FINISHED"}
+
+
+class ALX_OT_ObjectMode_SetToEditGeneric(bpy.types.Operator):
+    bl_label = ""
+    bl_idname = "alx.operator_set_to_edit_generic_mode"
+    bl_options = {"REGISTER"}
+
+    target_object_type: bpy.props.StringProperty(
+        name="target object type", default="", options={"HIDDEN"}
+    )  # type: ignore
+    target_selection_mode: bpy.props.StringProperty(name="", default="", options={"HIDDEN"})  # type: ignore
+
+
+    def execute(self, context):
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+        if self.target_object_type in TD_object_types:
+            match self.target_object_type:
+
+                case "ARMATURE":
+
+                    if self.target_object_sub_mode == "":
+                        armature_selection_override = list(
+                            filter(
+                                lambda object: object is not None,
+                                [
+                                    (
+                                        selected_object
+                                        if (selected_object.type == "ARMATURE")
+                                        else selected_object.find_armature()
+                                    )
+                                    for selected_object in context.selected_objects
+                                    if (selected_object is not None) and (selected_object.type in ["ARMATURE", "MESH"])
+                                ],
+                            )
+                        )
+
+                        for armature in armature_selection_override:
+                            armature.hide_set(False, view_layer=context.view_layer)
+                            armature.hide_viewport = False
+                            armature.select_set(True)
+
+                            if context.active_object.type != "ARMATURE":
+                                context.view_layer.objects.active = armature
+
+                        if (len(context.selected_objects) > 0) and (context.active_object.type == "ARMATURE"):
+                            bpy.ops.object.mode_set(mode="EDIT")
+                        return {"FINISHED"}
+
+                case "CURVE":
+                    # region
+                    if self.target_object_sub_mode == "":
+                        for selected_object in context.selected_objects:
+                            context.view_layer.objects.active = selected_object
+
+                            if context.active_object.type == "CURVE":
+                                break
+
+                        if (len(context.selected_objects) > 0) and (context.active_object.type == "CURVE"):
+                            bpy.ops.object.mode_set(mode="EDIT")
+
+                    return {"FINISHED"}
+                    # endregion
+
+                case "SURFACE":
+                    # region
+                    if self.target_object_sub_mode == "":
+                        for selected_object in context.selected_objects:
+                            context.view_layer.objects.active = selected_object
+
+                            if context.active_object.type == "SURFACE":
+                                break
+
+                        if (len(context.selected_objects) > 0) and (context.active_object.type == "SURFACE"):
+                            bpy.ops.object.mode_set(mode="EDIT")
+
+                    return {"FINISHED"}
+                    # endregion
+
+                case "META":
+                    # region
+                    if self.target_object_sub_mode == "":
+                        for selected_object in context.selected_objects:
+                            context.view_layer.objects.active = selected_object
+
+                            if context.active_object.type == "META":
+                                break
+
+                        if (len(context.selected_objects) > 0) and (context.active_object.type == "META"):
+                            bpy.ops.object.mode_set(mode="EDIT")
+
+                    return {"FINISHED"}
+                    # endregion
+
+                case "FONT":
+                    # region
+                    if self.target_object_sub_mode == "":
+                        for selected_object in context.selected_objects:
+                            context.view_layer.objects.active = selected_object
+
+                            if context.active_object.type == "FONT":
+                                break
+
+                        if (len(context.selected_objects) > 0) and (context.active_object.type == "FONT"):
+                            bpy.ops.object.mode_set(mode="EDIT")
+
+                    return {"FINISHED"}
+                    # endregion
+
+                case "LATTICE":
+                    # region
+                    if self.target_object_sub_mode == "":
+                        for selected_object in context.selected_objects:
+                            context.view_layer.objects.active = selected_object
+
+                            if context.active_object.type == "LATTICE":
+                                break
+
+                        if (len(context.selected_objects) > 0) and (context.active_object.type == "LATTICE"):
+                            bpy.ops.object.mode_set(mode="EDIT")
+
+                    return {"FINISHED"}
+                    # endregion
+
+                case "GPENCIL":
+                    # region
+                    if bpy.app.version[:2] in {(4, 0), (4, 1), (4, 2)}:
+                        if self.target_object_sub_mode in ["POINT", "STROKE", "SEGMENT"]:
+                            for selected_object in context.selected_objects:
+                                context.view_layer.objects.active = selected_object
+
+                                if context.active_object.type == "GPENCIL":
+                                    break
+
+                            if (len(context.selected_objects) > 0) and (context.active_object.type == "GPENCIL"):
+                                bpy.ops.object.mode_set(mode="EDIT_GPENCIL")
+                                context.scene.tool_settings.gpencil_selectmode_edit = self.target_object_sub_mode
+
+                    if bpy.app.version[:2] in {(4, 3), (4, 4)}:
+                        if self.target_object_sub_mode in ["POINT", "STROKE", "SEGMENT"]:
+                            for selected_object in context.selected_objects:
+                                context.view_layer.objects.active = selected_object
+
+                                if context.active_object.type == "GREASEPENCIL":
+                                    break
+
+                            if (len(context.selected_objects) > 0) and (context.active_object.type == "GREASEPENCIL"):
+                                bpy.ops.object.mode_set(mode="EDIT")
+                                context.scene.tool_settings.gpencil_selectmode_edit = self.target_object_sub_mode
+
+                    return {"FINISHED"}
+                    # endregion
+
+        return {"FINISHED"}
+
+
+class ALX_OT_ObjectMode_SetToSculpt(bpy.types.Operator):
+    bl_label = ""
+    bl_idname = "alx.operator_set_to_sculpt_mode"
+    bl_options = {"REGISTER"}
+
+
+    def execute(self, context):
+
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+        if len(context.selected_objects) > 0:
+            sculpt_selection_override = [
+                selected_object for selected_object in context.selected_objects if (selected_object.type == "MESH")
+            ]
+
+            if len(sculpt_selection_override) == 0:
+                return {"CANCELLED"}
+
+            context.view_layer.objects.active = sculpt_selection_override[0]
+            bpy.ops.object.mode_set(mode="SCULPT")
+
+        return {"FINISHED"}
+
+
+# endregion
+
 
 class VIEW3D_MT_object_mode_pie(Menu):
     bl_label = "Mode"
 
-    def draw(self, _context):
-        layout = self.layout
+    def draw(self, context):
+        menu_pie = self.layout.menu_pie()
 
-        pie = layout.menu_pie()
-        pie.operator_enum("object.mode_set", "mode")
+        # OBJECT
+        menu_pie.operator(ALX_OT_ObjectMode_SetToObject.bl_idname, text="OBJECT", icon="OBJECT_DATAMODE")
+
+        # POSE
+        if context.mode != "POSE":
+            menu_pie.operator(ALX_OT_ObjectMode_SetToPose.bl_idname, text="SMART-POSE", icon="ARMATURE_DATA")
+        else:
+            if context.mode == "POSE":
+                menu_pie.box().label(text="[Mode] | [Pose]")
+
+        # WEIGHT PAINT
+        if context.mode != "PAINT_WEIGHT":
+            menu_pie.operator(ALX_OT_ObjectMode_SetToPaintWeight.bl_idname, text="A-WPAINT", icon="WPAINT_HLT")
+        else:
+            if context.mode == "PAINT_WEIGHT":
+                menu_pie.box().label(text="[Mode] | [Weight Paint]")
+
+        edge_edit_mode_button = menu_pie.operator(
+            ALX_OT_ObjectMode_SetToEditMesh.bl_idname, text="Edge", icon="EDGESEL"
+        )
+        edge_edit_mode_button.target_selection_mode = "EDGE"
+
+        vertex_edit_mode_button = menu_pie.operator(
+            ALX_OT_ObjectMode_SetToEditMesh.bl_idname, text="Vertex", icon="VERTEXSEL"
+        )
+        vertex_edit_mode_button.target_selection_mode = "VERT"
+
+        face_edit_mode_button = menu_pie.operator(
+            ALX_OT_ObjectMode_SetToEditMesh.bl_idname, text="Face", icon="FACESEL"
+        )
+        face_edit_mode_button.target_selection_mode = "FACE"
+
+        if len(context.selected_objects) != 0:
+
+            selection_bulk_edit_box: bpy.types.UILayout = menu_pie.box().row().split(factor=0.33)
+            selection_bulk_edit_box.ui_units_x = 15
+
+            selection_bulk_edit_box_L = selection_bulk_edit_box.column()
+            selection_bulk_edit_box_M = selection_bulk_edit_box.column()
+            selection_bulk_edit_box_R = selection_bulk_edit_box.column()
+
+            sbe_armature = selection_bulk_edit_box_L.row().operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="ARMATURE_DATA"
+            )
+            sbe_armature.target_object_type = "ARMATURE"
+            sbe_armature.target_selection_mode = ""
+
+            sbe_curve = selection_bulk_edit_box_L.row().operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="CURVE_DATA"
+            )
+            sbe_curve.target_object_type = "CURVE"
+            sbe_armature.target_selection_mode = ""
+
+            sbe_surface = selection_bulk_edit_box_L.row().operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="SURFACE_DATA"
+            )
+            sbe_surface.target_object_type = "SURFACE"
+            sbe_surface.target_selection_mode = ""
+
+            sbe_meta = selection_bulk_edit_box_M.row().operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="META_DATA"
+            )
+            sbe_meta.target_object_type = "META"
+            sbe_meta.target_selection_mode = ""
+
+            sbe_text = selection_bulk_edit_box_M.row().operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="FILE_FONT"
+            )
+            sbe_text.target_object_type = "FONT"
+            sbe_text.target_selection_mode = ""
+
+            sbe_lattice = selection_bulk_edit_box_M.row().operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="Lattice", icon="LATTICE_DATA"
+            )
+            sbe_lattice.target_object_type = "LATTICE"
+            sbe_lattice.target_selection_mode = ""
+
+            gpenci_column = selection_bulk_edit_box_R.column()
+            sbe_gpencil_point = gpenci_column.operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="GPencil", icon="GP_SELECT_POINTS"
+            )
+            sbe_gpencil_point.target_object_type = "GPENCIL"
+            sbe_gpencil_point.target_selection_mode = "POINT"
+
+            sbe_gpencil_stroke = gpenci_column.operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="Strokes", icon="GP_SELECT_STROKES"
+            )
+            sbe_gpencil_stroke.target_object_type = "GPENCIL"
+            sbe_gpencil_stroke.target_selection_mode = "STROKE"
+
+            sbe_gpencil_segment = gpenci_column.operator(
+                ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="B-Strokes", icon="GP_SELECT_BETWEEN_STROKES"
+            )
+            sbe_gpencil_segment.target_object_type = "GPENCIL"
+            sbe_gpencil_segment.target_selection_mode = "SEGMENT"
+
+        else:
+            menu_pie.box().label(text="[Selection] [Missing]")
+
+        if context.mode != "SCULPT":
+            menu_pie.operator(ALX_OT_ObjectMode_SetToSculpt.bl_idname, text="Sculpt", icon="SCULPTMODE_HLT")
+        else:
+            if context.mode == "SCULPT":
+                box = menu_pie.box()
+                box.label(text="[Mode] | [Sculpt]")
 
 
 class VIEW3D_MT_view_pie(Menu):
@@ -9268,6 +9691,13 @@ class VIEW3D_AST_brush_gpencil_weight(AssetShelfHiddenByDefault, View3DAssetShel
 
 
 classes = (
+
+    ALX_OT_ObjectMode_SetToObject,
+    ALX_OT_ObjectMode_SetToPose,
+    ALX_OT_ObjectMode_SetToPaintWeight,
+    ALX_OT_ObjectMode_SetToEditMesh,
+    ALX_OT_ObjectMode_SetToEditGeneric,
+    ALX_OT_ObjectMode_SetToSculpt,
     VIEW3D_HT_header,
     VIEW3D_HT_tool_header,
     VIEW3D_MT_editor_menus,
