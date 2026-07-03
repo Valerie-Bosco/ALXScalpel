@@ -184,10 +184,10 @@ static void store_float_in_vcol(ColorGeometry4b *vcol, float float_value)
   vcol->a = 1.0f;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result;
-  ParticleInstanceModifierData *pimd = reinterpret_cast<ParticleInstanceModifierData *>(modifier_data);
+  ParticleInstanceModifierData *pimd = reinterpret_cast<ParticleInstanceModifierData *>(md);
   Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   ParticleSimulationData sim;
   ParticleSystem *psys = nullptr;

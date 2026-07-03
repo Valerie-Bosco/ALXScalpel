@@ -63,9 +63,7 @@ int button_menu_step(Button *but, int direction)
   if (button_menu_step_poll(but)) {
     if (but->menu_step_func) {
       return but->menu_step_func(
-          static_cast<bContext *>(but->block->evil_C),
-          direction,
-          but->poin);
+          static_cast<bContext *>(but->block->evil_C), direction, but->poin);
     }
 
     const int curval = RNA_property_enum_get(&but->rnapoin, but->rnaprop);
@@ -95,9 +93,8 @@ static uint popup_string_hash(const StringRef str, const bool use_sep)
 {
   /* sometimes button contains hotkey, sometimes not, strip for proper compare */
   const size_t sep_index = use_sep ? str.find_first_of(UI_SEP_CHAR) : StringRef::not_found;
-  const StringRef before_hotkey = sep_index == StringRef::not_found ?
-                                    str :
-                                    str.substr(0, sep_index);
+  const StringRef before_hotkey = sep_index == StringRef::not_found ? str :
+                                                                      str.substr(0, sep_index);
 
   return get_default_hash(before_hotkey);
 }
@@ -214,9 +211,8 @@ static void popup_menu_create_block(bContext *C,
    * where having invoke doesn't make sense.
    * When the menu was opened from a button, use invoke still for compatibility. This used to be
    * the default and changing now could cause issues. */
-  const wm::OpCallContext opcontext = pup->but ?
-                                        wm::OpCallContext::InvokeRegionWin :
-                                        wm::OpCallContext::ExecRegionWin;
+  const wm::OpCallContext opcontext = pup->but ? wm::OpCallContext::InvokeRegionWin :
+                                                 wm::OpCallContext::ExecRegionWin;
 
   pup->layout->operator_context_set(opcontext);
 
@@ -229,7 +225,7 @@ static void popup_menu_create_block(bContext *C,
 
 static Block *block_func_POPUP(bContext *C, PopupBlockHandle *handle, void *arg_pup)
 {
-  auto pup = static_cast<PopupMenu *>(arg_pup);
+  PopupMenu *pup = static_cast<PopupMenu *>(arg_pup);
 
   int minwidth = 0;
 
@@ -289,7 +285,7 @@ static Block *block_func_POPUP(bContext *C, PopupBlockHandle *handle, void *arg_
 
   /* in some cases we create the block before the region,
    * so we set it delayed here if necessary */
-  if (BLI_findindex(&handle->region->runtime->blocks, block) == -1) {
+  if (BLI_findindex(&handle->region->runtime->uiblocks, block) == -1) {
     block_region_set(block, handle->region);
   }
 
@@ -352,7 +348,8 @@ static Block *block_func_POPUP(bContext *C, PopupBlockHandle *handle, void *arg_
     if (but_activate) {
       ARegion *region = CTX_wm_region(C);
       if (region && region->regiontype == RGN_TYPE_TOOLS && but_activate->block &&
-          (but_activate->block->flag & BLOCK_POPUP_HOLD)) {
+          (but_activate->block->flag & BLOCK_POPUP_HOLD))
+      {
         /* In Toolbars, highlight the button with select color. */
         but_activate->flag |= UI_SELECT_DRAW;
       }
@@ -389,7 +386,7 @@ static Block *block_func_POPUP(bContext *C, PopupBlockHandle *handle, void *arg_
 
 static void block_free_func_POPUP(void *arg_pup)
 {
-  auto pup = static_cast<PopupMenu *>(arg_pup);
+  PopupMenu *pup = static_cast<PopupMenu *>(arg_pup);
   MEM_delete(pup);
 }
 
@@ -424,14 +421,7 @@ static PopupBlockHandle *popup_menu_create_impl(
     pup->popup = true;
   }
   PopupBlockHandle *handle = popup_block_create(
-      C,
-      butregion,
-      but,
-      nullptr,
-      block_func_POPUP,
-      pup,
-      block_free_func_POPUP,
-      can_refresh);
+      C, butregion, but, nullptr, block_func_POPUP, pup, block_free_func_POPUP, can_refresh);
 
   if (!but) {
     handle->popup = true;
@@ -443,22 +433,20 @@ static PopupBlockHandle *popup_menu_create_impl(
   return handle;
 }
 
-PopupBlockHandle *popup_menu_create(
-    bContext *C,
-    ARegion *butregion,
-    Button *but,
-    MenuCreateFunc menu_func,
-    void *arg)
+PopupBlockHandle *popup_menu_create(bContext *C,
+                                    ARegion *butregion,
+                                    Button *but,
+                                    MenuCreateFunc menu_func,
+                                    void *arg,
+                                    const bool can_refresh)
 {
   return popup_menu_create_impl(
       C,
       butregion,
       but,
       nullptr,
-      [menu_func, arg](bContext *C, Layout *layout) {
-        menu_func(C, layout, arg);
-      },
-      false);
+      [menu_func, arg](bContext *C, Layout *layout) { menu_func(C, layout, arg); },
+      can_refresh);
 }
 
 /** \} */
@@ -478,17 +466,7 @@ static void create_title_button(Layout &layout, const char *title, int icon)
   }
   else {
     Button *but = uiDefBut(
-        block,
-        ButtonType::Label,
-        title,
-        0,
-        0,
-        200,
-        UI_UNIT_Y,
-        nullptr,
-        0.0,
-        0.0,
-        "");
+        block, ButtonType::Label, title, 0, 0, 200, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
     but->drawflag = BUT_TEXT_LEFT;
   }
 
@@ -540,14 +518,7 @@ void popup_menu_end(bContext *C, PopupMenu *pup)
   }
 
   PopupBlockHandle *menu = popup_block_create(
-      C,
-      butregion,
-      but,
-      nullptr,
-      block_func_POPUP,
-      pup,
-      nullptr,
-      false);
+      C, butregion, but, nullptr, block_func_POPUP, pup, nullptr, false);
   menu->popup = true;
 
   popup_handlers_add(C, &window->runtime->modalhandlers, menu, 0);
@@ -618,7 +589,7 @@ void popup_menu_reports(bContext *C, ReportList *reports)
       msg_next = strchr(msg, '\n');
       if (msg_next) {
         msg_next++;
-        BLI_strncpy_utf8(buf, msg, std::min(sizeof(buf), static_cast<size_t>(msg_next - msg)));
+        BLI_strncpy_utf8(buf, msg, std::min(sizeof(buf), size_t(msg_next - msg)));
         msg = buf;
       }
       layout->label(msg, icon);
@@ -650,7 +621,7 @@ static void popup_menu_create_from_menutype(bContext *C,
         item_menutype_func(C, layout, mt);
       },
       true);
-
+  handle->srna_owner = mt->rna_ext.srna;
   STRNCPY_UTF8(handle->menu_idname, mt->idname);
 
   WorkspaceStatus status(C);
@@ -677,7 +648,7 @@ wmOperatorStatus popup_menu_invoke(bContext *C, const char *idname, ReportList *
   }
   /* For now always recreate menus on redraw that were invoked with this function. Maybe we want to
    * make that optional somehow. */
-  constexpr bool allow_refresh = true;
+  const bool allow_refresh = true;
 
   const char *title = CTX_IFACE_(mt->translation_context, mt->label);
   if (allow_refresh) {
@@ -700,25 +671,19 @@ wmOperatorStatus popup_menu_invoke(bContext *C, const char *idname, ReportList *
 /** \name Popup Block API
  * \{ */
 
-void popup_block_invoke_ex(
-    bContext *C,
-    BlockCreateFunc func,
-    void *arg,
-    FreeArgFunc arg_free,
-    const bool can_refresh)
+void popup_block_invoke_ex(bContext *C,
+                           BlockCreateFunc func,
+                           void *arg,
+                           FreeArgFunc arg_free,
+                           const bool can_refresh,
+                           StructRNA *srna_owner)
 {
   wmWindow *window = CTX_wm_window(C);
 
   PopupBlockHandle *handle = popup_block_create(
-      C,
-      nullptr,
-      nullptr,
-      func,
-      nullptr,
-      arg,
-      arg_free,
-      can_refresh);
+      C, nullptr, nullptr, func, nullptr, arg, arg_free, can_refresh);
   handle->popup = true;
+  handle->srna_owner = srna_owner;
 
   /* Clear the status bar. */
   WorkspaceStatus status(C);
@@ -726,15 +691,14 @@ void popup_block_invoke_ex(
 
   popup_handlers_add(C, &window->runtime->modalhandlers, handle, 0);
   block_active_only_flagged_buttons(
-      C,
-      handle->region,
-      static_cast<Block *>(handle->region->runtime->blocks.first));
+      C, handle->region, static_cast<Block *>(handle->region->runtime->uiblocks.first));
   WM_event_add_mousemove(window);
 }
 
-void popup_block_invoke(bContext *C, BlockCreateFunc func, void *arg, FreeArgFunc arg_free)
+void popup_block_invoke(
+    bContext *C, BlockCreateFunc func, void *arg, FreeArgFunc arg_free, StructRNA *srna_owner)
 {
-  popup_block_invoke_ex(C, func, arg, arg_free, true);
+  popup_block_invoke_ex(C, func, arg, arg_free, true, srna_owner);
 }
 
 void popup_block_ex(bContext *C,
@@ -747,18 +711,14 @@ void popup_block_ex(bContext *C,
   wmWindow *window = CTX_wm_window(C);
 
   PopupBlockHandle *handle = popup_block_create(
-      C,
-      nullptr,
-      nullptr,
-      func,
-      nullptr,
-      arg,
-      nullptr,
-      true);
+      C, nullptr, nullptr, func, nullptr, arg, nullptr, true);
   handle->popup = true;
   handle->retvalue = 1;
 
   handle->popup_op = op;
+  if (op) {
+    handle->srna_owner = op->type->srna;
+  }
   handle->popup_arg = arg;
   handle->popup_func = popup_func;
   handle->cancel_func = cancel_func;
@@ -770,15 +730,13 @@ void popup_block_ex(bContext *C,
 
   popup_handlers_add(C, &window->runtime->modalhandlers, handle, 0);
   block_active_only_flagged_buttons(
-      C,
-      handle->region,
-      static_cast<Block *>(handle->region->runtime->blocks.first));
+      C, handle->region, static_cast<Block *>(handle->region->runtime->uiblocks.first));
   WM_event_add_mousemove(window);
 }
 
 static void popup_block_template_close_cb(bContext *C, void *arg1, void * /*arg2*/)
 {
-  auto block = static_cast<Block *>(arg1);
+  Block *block = static_cast<Block *>(arg1);
 
   PopupBlockHandle *handle = block->handle;
   if (handle == nullptr) {
@@ -810,7 +768,7 @@ void popup_block_template_confirm(Block *block,
                                   FunctionRef<Button *()> cancel_fn)
 {
 #ifdef _WIN32
-  constexpr bool windows_layout = true;
+  const bool windows_layout = true;
 #else
   const bool windows_layout = false;
 #endif
@@ -887,8 +845,7 @@ void popup_block_template_confirm_op(Layout *layout,
                                    cancel_text,
                                    0,
                                    0,
-                                   UI_UNIT_X,
-                                   /* Ignored, as a split is used. */
+                                   UI_UNIT_X, /* Ignored, as a split is used. */
                                    UI_UNIT_Y,
                                    nullptr,
                                    "");
@@ -908,14 +865,7 @@ void uiPupBlockOperator(bContext *C,
 {
   wmWindow *window = CTX_wm_window(C);
 
-  PopupBlockHandle *handle = popup_block_create(C,
-                                                nullptr,
-                                                nullptr,
-                                                func,
-                                                nullptr,
-                                                op,
-                                                nullptr,
-                                                true);
+  PopupBlockHandle *handle = popup_block_create(C, nullptr, nullptr, func, nullptr, op, nullptr, true);
   handle->popup = 1;
   handle->retvalue = 1;
 
@@ -953,7 +903,7 @@ void popup_block_close(bContext *C, wmWindow *win, Block *block)
 bool popup_block_name_exists(const bScreen *screen, const StringRef name)
 {
   for (const ARegion &region : screen->regionbase) {
-    for (const Block &block : region.runtime->blocks) {
+    for (const Block &block : region.runtime->uiblocks) {
       if (block.name == name) {
         return true;
       }
@@ -974,4 +924,4 @@ void popup_menu_close_from_but(const Button *but, const bool is_cancel)
 
 /** \} */
 
-} // namespace blender::ui
+}  // namespace blender::ui

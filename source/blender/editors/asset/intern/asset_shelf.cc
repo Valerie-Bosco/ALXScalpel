@@ -93,10 +93,10 @@ static bool type_poll_no_spacetype_check(const bContext &C, const AssetShelfType
 #ifndef NDEBUG
   const Vector<std::unique_ptr<AssetShelfType>> &shelf_types = static_shelf_types();
   BLI_assert_msg(std::find_if(shelf_types.begin(),
-                   shelf_types.end(),
-                   [&](const std::unique_ptr<AssetShelfType> &type) {
-                   return type.get() == shelf_type;
-                   }) != shelf_types.end(),
+                              shelf_types.end(),
+                              [&](const std::unique_ptr<AssetShelfType> &type) {
+                                return type.get() == shelf_type;
+                              }) != shelf_types.end(),
                  "Asset shelf type is not registered");
 #endif
 
@@ -176,9 +176,8 @@ AssetShelf *create_shelf_from_type(AssetShelfType &type)
 {
   AssetShelf *shelf = MEM_new<AssetShelf>(__func__);
   *shelf = dna::shallow_zero_initialize();
-  shelf->settings.preview_size = type.default_preview_size ?
-                                   type.default_preview_size :
-                                   ASSET_SHELF_PREVIEW_SIZE_DEFAULT;
+  shelf->settings.preview_size = type.default_preview_size ? type.default_preview_size :
+                                                             ASSET_SHELF_PREVIEW_SIZE_DEFAULT;
   shelf->settings.asset_library_reference = asset_system::all_library_reference();
   shelf->type = &type;
   shelf->preferred_row_count = 1;
@@ -237,9 +236,8 @@ static AssetShelf *update_active_shelf(const bContext &C,
   /* Case 1: */
   if (shelf_regiondata.active_shelf &&
       type_poll_for_non_popup(
-          C,
-          ensure_shelf_has_type(*shelf_regiondata.active_shelf),
-          space_type)) {
+          C, ensure_shelf_has_type(*shelf_regiondata.active_shelf), space_type))
+  {
     /* Not a strong precondition, but if this is wrong something weird might be going on. */
     BLI_assert(shelf_regiondata.active_shelf == shelf_regiondata.shelves.first);
     return shelf_regiondata.active_shelf;
@@ -372,35 +370,36 @@ void region_message_subscribe(const wmRegionMessageSubscribeParams *params)
   msg_sub_value_region_tag_redraw.user_data = region;
   msg_sub_value_region_tag_redraw.notify = ED_region_do_msg_notify_tag_redraw;
   WM_msg_subscribe_rna_prop(
-      mbus,
-      &workspace->id,
-      workspace,
-      WorkSpace,
-      tools,
-      &msg_sub_value_region_tag_redraw);
+      mbus, &workspace->id, workspace, WorkSpace, tools, &msg_sub_value_region_tag_redraw);
 
   {
     wmMsgSubscribeValue msg_sub_value_region_clear_remote_libraries{};
     msg_sub_value_region_clear_remote_libraries.owner = region;
     msg_sub_value_region_clear_remote_libraries.user_data = region;
-    msg_sub_value_region_clear_remote_libraries.notify = []( /* Follow wmMsgNotifyFn spec */
-        bContext *C,
-        wmMsgSubscribeKey * /*msg_key*/,
-        wmMsgSubscribeValue *msg_val) {
-          auto region = static_cast<ARegion *>(msg_val->owner);
-          RegionAssetShelf *shelf_regiondata = RegionAssetShelf::get_from_asset_shelf_region(
-              *region);
-          AssetShelf *active_shelf = shelf_regiondata->active_shelf;
-          if (asset_system::is_or_contains_remote_libraries(
-              active_shelf->settings.asset_library_reference)) {
-            list::clear(&active_shelf->settings.asset_library_reference, C);
-          }
-        };
+    msg_sub_value_region_clear_remote_libraries.notify = [](/* Follow wmMsgNotifyFn spec */
+                                                            bContext *C,
+                                                            wmMsgSubscribeKey * /*msg_key*/,
+                                                            wmMsgSubscribeValue *msg_val) {
+      ARegion *region = static_cast<ARegion *>(msg_val->owner);
+      RegionAssetShelf *shelf_regiondata = RegionAssetShelf::get_from_asset_shelf_region(*region);
+      AssetShelf *active_shelf = shelf_regiondata->active_shelf;
+      if (blender::asset_system::is_or_contains_remote_libraries(
+              active_shelf->settings.asset_library_reference))
+      {
+        asset::list::clear(&active_shelf->settings.asset_library_reference, C);
+      }
+    };
     WM_msg_subscribe_rna_prop(mbus,
                               nullptr,
                               &U,
                               PreferencesSystem,
                               use_online_access,
+                              &msg_sub_value_region_clear_remote_libraries);
+    WM_msg_subscribe_rna_prop(mbus,
+                              nullptr,
+                              &U,
+                              PreferencesExperimental,
+                              use_remote_asset_libraries,
                               &msg_sub_value_region_clear_remote_libraries);
   }
 }
@@ -418,21 +417,16 @@ void region_init(wmWindowManager *wm, ARegion *region)
   view2d_region_reinit(&region->v2d, ui::V2D_COMMONVIEW_PANELS_UI, region->winx, region->winy);
 
   wmKeyMap *keymap = WM_keymap_ensure(
-      wm->runtime->defaultconf,
-      "View2D Buttons List",
-      SPACE_EMPTY,
-      RGN_TYPE_WINDOW);
+      wm->runtime->defaultconf, "View2D Buttons List", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->runtime->handlers, keymap);
 
   region->v2d.scroll = V2D_SCROLL_RIGHT | V2D_SCROLL_VERTICAL_HIDE;
   region->v2d.keepzoom |= V2D_LOCKZOOM_X | V2D_LOCKZOOM_Y;
   region->v2d.keepofs |= V2D_KEEPOFS_Y;
-  region->v2d.keeptot |= V2D_KEEPTOT_STRICT;
 
   region->v2d.flag |= V2D_SNAP_TO_PAGESIZE_Y;
-  region->v2d.page_size_y = active_shelf ?
-                              tile_height(active_shelf->settings) :
-                              asset_shelf_default_tile_height();
+  region->v2d.page_size_y = active_shelf ? tile_height(active_shelf->settings) :
+                                           asset_shelf_default_tile_height();
 
   /* Ensure the view is snapped to a page still, especially for DPI changes. */
   ui::view2d_offset_y_snap_to_closest_page(&region->v2d);
@@ -470,9 +464,7 @@ static int current_tile_draw_height(const ARegion *region)
 static int calculate_row_count_from_tile_draw_height(const int region_height_scaled,
                                                      const int tile_draw_height)
 {
-  return std::max(1,
-                  static_cast<int>((region_height_scaled - 2 * main_region_padding_y()) /
-                                   tile_draw_height));
+  return std::max(1, int((region_height_scaled - 2 * main_region_padding_y()) / tile_draw_height));
 }
 
 static int calculate_scaled_region_height_from_row_count(const int row_count,
@@ -493,10 +485,10 @@ int region_snap(const ARegion *region, const int size, const int axis)
   const int tile_height = current_tile_draw_height(region);
 
   const int row_count = calculate_row_count_from_tile_draw_height(size * UI_SCALE_FAC,
-    tile_height);
+                                                                  tile_height);
 
   const int new_size_scaled = calculate_scaled_region_height_from_row_count(row_count,
-    tile_height);
+                                                                            tile_height);
   return new_size_scaled / UI_SCALE_FAC;
 }
 
@@ -518,8 +510,7 @@ static void region_resize_to_preferred(ScrArea *area, ARegion *region)
    * used and preview size is increased. */
   const int size_y_avail = ED_area_max_regionsize(area, region, AE_TOP_TO_BOTTOMRIGHT);
   const short int max_row_count = calculate_row_count_from_tile_draw_height(
-      size_y_avail * UI_SCALE_FAC,
-      tile_height);
+      size_y_avail * UI_SCALE_FAC, tile_height);
 
   const int new_size_y = calculate_scaled_region_height_from_row_count(
                              std::min(max_row_count, active_shelf->preferred_row_count),
@@ -543,8 +534,7 @@ void region_on_user_resize(const ARegion *region)
 
   const int tile_height = current_tile_draw_height(region);
   active_shelf->preferred_row_count = calculate_row_count_from_tile_draw_height(
-      region->sizey * UI_SCALE_FAC,
-      tile_height);
+      region->sizey * UI_SCALE_FAC, tile_height);
 }
 
 int tile_width(const AssetShelfSettings &settings)
@@ -555,8 +545,8 @@ int tile_width(const AssetShelfSettings &settings)
 int tile_height(const AssetShelfSettings &settings)
 {
   return (settings.display_flag & ASSETSHELF_SHOW_NAMES) ?
-           ui::preview_tile_size_y(settings.preview_size) :
-           ui::preview_tile_size_y_no_label(settings.preview_size);
+             ui::preview_tile_size_y(settings.preview_size) :
+             ui::preview_tile_size_y_no_label(settings.preview_size);
 }
 
 static int asset_shelf_default_tile_height()
@@ -577,10 +567,12 @@ void region_layout(const bContext *C, ARegion *region)
       shelf_regiondata,
       "Region-data should've been created by a previously called `region_on_poll_success()`.");
 
-  const AssetShelf *active_shelf = shelf_regiondata->active_shelf;
+  AssetShelf *active_shelf = shelf_regiondata->active_shelf;
   if (!active_shelf) {
     return;
   }
+
+  settings_ensure_valid_library_ref(active_shelf->settings);
 
   ui::Block *block = block_begin(C, region, __func__, ui::EmbossType::Emboss);
 
@@ -611,7 +603,7 @@ void region_layout(const bContext *C, ARegion *region)
    * called as part of #block_end(), so the block's window matrix needs to be up-to-date. */
   {
     ui::view2d_view_ortho(&region->v2d);
-    ui::blocklist_update_window_matrix(C, &region->runtime->blocks);
+    ui::blocklist_update_window_matrix(C, &region->runtime->uiblocks);
   }
 
   block_end(C, block);
@@ -625,9 +617,9 @@ void region_draw(const bContext *C, ARegion *region)
   ui::view2d_view_ortho(&region->v2d);
 
   /* View2D matrix might have changed due to dynamic sized regions. */
-  ui::blocklist_update_window_matrix(C, &region->runtime->blocks);
+  ui::blocklist_update_window_matrix(C, &region->runtime->uiblocks);
 
-  ui::blocklist_draw(C, &region->runtime->blocks);
+  ui::blocklist_draw(C, &region->runtime->uiblocks);
 
   /* Restore view matrix. */
   ui::view2d_view_restore(C);
@@ -648,7 +640,7 @@ void region_on_poll_success(const bContext *C, ARegion *region)
   ScrArea *area = CTX_wm_area(C);
   update_active_shelf(
       *C,
-      static_cast<eSpace_Type>(area->spacetype),
+      eSpace_Type(area->spacetype),
       *shelf_regiondata,
       /*on_create=*/
       [&](AssetShelf &new_shelf) {
@@ -661,9 +653,7 @@ void region_on_poll_success(const bContext *C, ARegion *region)
       [&](AssetShelf &shelf) {
         /* Restore region visibility from previous asset shelf instantiation when reactivating. */
         SET_FLAG_FROM_TEST(
-            region->flag,
-            shelf.instance_flag & ASSETSHELF_REGION_IS_HIDDEN,
-            RGN_FLAG_HIDDEN);
+            region->flag, shelf.instance_flag & ASSETSHELF_REGION_IS_HIDDEN, RGN_FLAG_HIDDEN);
       });
 
   if (old_region_flag != region->flag) {
@@ -784,11 +774,8 @@ int context(const bContext *C, const char *member, bContextDataResult *result)
     if (!active_shelf) {
       return CTX_RESULT_NO_DATA;
     }
-
-    CTX_data_pointer_set(result,
-                         &screen->id,
-                         RNA_AssetLibraryReference,
-                         &active_shelf->settings.asset_library_reference);
+    AssetLibraryReference &library_ref = settings_ensure_valid_library_ref(active_shelf->settings);
+    CTX_data_pointer_set(result, &screen->id, RNA_AssetLibraryReference, &library_ref);
     return CTX_RESULT_OK;
   }
 
@@ -805,9 +792,7 @@ int context(const bContext *C, const char *member, bContextDataResult *result)
     }
 
     const PointerRNA *asset_ptr = CTX_store_ptr_lookup(
-        but_context,
-        "asset",
-        RNA_AssetRepresentation);
+        but_context, "asset", RNA_AssetRepresentation);
     if (!asset_ptr) {
       return CTX_RESULT_NO_DATA;
     }
@@ -870,38 +855,29 @@ static void add_catalog_tabs(AssetShelf &shelf, ui::Layout &layout)
   /* "All" tab. */
   {
     ui::Button *but = add_tab_button(*block, IFACE_("All"));
-    button_func_set(but,
-                    [&shelf_settings](bContext &C) {
-                      settings_set_all_catalog_active(shelf_settings);
-                      send_redraw_notifier(C);
-                    });
-    button_func_pushed_state_set(but,
-                                 [&shelf_settings](const ui::Button &) -> bool {
-                                   return settings_is_all_catalog_active(shelf_settings);
-                                 });
+    button_func_set(but, [&shelf_settings](bContext &C) {
+      settings_set_all_catalog_active(shelf_settings);
+      send_redraw_notifier(C);
+    });
+    button_func_pushed_state_set(but, [&shelf_settings](const ui::Button &) -> bool {
+      return settings_is_all_catalog_active(shelf_settings);
+    });
   }
 
   layout.separator();
 
   /* Regular catalog tabs. */
-  settings_foreach_enabled_catalog_path(shelf,
-                                        [&](const asset_system::AssetCatalogPath &path) {
-                                          ui::Button *but = add_tab_button(*block, path.name());
+  settings_foreach_enabled_catalog_path(shelf, [&](const asset_system::AssetCatalogPath &path) {
+    ui::Button *but = add_tab_button(*block, path.name());
 
-                                          button_func_set(but,
-                                                          [&shelf_settings, path](bContext &C) {
-                                                            settings_set_active_catalog(
-                                                                shelf_settings,
-                                                                path);
-                                                            send_redraw_notifier(C);
-                                                          });
-                                          button_func_pushed_state_set(but,
-                                            [&shelf_settings, path](const ui::Button &) -> bool {
-                                              return settings_is_active_catalog(
-                                                  shelf_settings,
-                                                  path);
-                                            });
-                                        });
+    button_func_set(but, [&shelf_settings, path](bContext &C) {
+      settings_set_active_catalog(shelf_settings, path);
+      send_redraw_notifier(C);
+    });
+    button_func_pushed_state_set(but, [&shelf_settings, path](const ui::Button &) -> bool {
+      return settings_is_active_catalog(shelf_settings, path);
+    });
+  });
 }
 
 /** \} */
@@ -927,7 +903,7 @@ static void asset_shelf_header_draw(const bContext *C, Header *header)
   layout.separator();
 
   PointerRNA shelf_ptr = active_shelf_ptr_from_context(C);
-  if (auto shelf = static_cast<AssetShelf *>(shelf_ptr.data)) {
+  if (AssetShelf *shelf = static_cast<AssetShelf *>(shelf_ptr.data)) {
     add_catalog_tabs(*shelf, layout);
   }
 
@@ -972,9 +948,8 @@ void type_unlink(const Main &bmain, const AssetShelfType &shelf_type)
   for (bScreen &screen : bmain.screens) {
     for (ScrArea &area : screen.areabase) {
       for (SpaceLink &sl : area.spacedata) {
-        ListBaseT<ARegion> *regionbase = (&sl == area.spacedata.first) ?
-                                           &area.regionbase :
-                                           &sl.regionbase;
+        ListBaseT<ARegion> *regionbase = (&sl == area.spacedata.first) ? &area.regionbase :
+                                                                         &sl.regionbase;
         for (ARegion &region : *regionbase) {
           if (region.regiontype != RGN_TYPE_ASSET_SHELF) {
             continue;
@@ -992,7 +967,7 @@ void type_unlink(const Main &bmain, const AssetShelfType &shelf_type)
           }
 
           BLI_assert((shelf_regiondata->active_shelf == nullptr) ||
-              (shelf_regiondata->active_shelf->type != &shelf_type));
+                     (shelf_regiondata->active_shelf->type != &shelf_type));
         }
       }
     }
@@ -1013,7 +988,7 @@ void show_catalog_in_visible_shelves(const bContext &C, const StringRefNull cata
   for (wmWindow &win : wm->windows) {
     const bScreen *screen = WM_window_get_active_screen(&win);
     for (ScrArea &area : screen->areabase) {
-      if (AssetShelf *shelf = active_shelf_from_area(&area)) {
+      if (AssetShelf *shelf = asset::shelf::active_shelf_from_area(&area)) {
         settings_set_catalog_path_enabled(*shelf, catalog_path.c_str());
       }
     }
@@ -1022,4 +997,4 @@ void show_catalog_in_visible_shelves(const bContext &C, const StringRefNull cata
 
 /** \} */
 
-} // namespace blender::ed::asset::shelf
+}  // namespace blender::ed::asset::shelf

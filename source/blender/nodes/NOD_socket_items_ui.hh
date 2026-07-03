@@ -19,6 +19,7 @@
 
 #include "BKE_screen.hh"
 
+#include "NOD_node_declaration.hh"
 #include "NOD_socket_items.hh"
 
 namespace blender::nodes::socket_items::ui {
@@ -57,9 +58,7 @@ static void draw_items_list_with_operators(const bContext *C,
 {
   BLI_assert(Accessor::node_idname == node.idname);
   PointerRNA node_ptr = RNA_pointer_create_discrete(
-      const_cast<ID *>(&tree.id),
-      RNA_Node,
-      const_cast<bNode *>(&node));
+      const_cast<ID *>(&tree.id), RNA_Node, const_cast<bNode *>(&node));
 
   static const uiListType *items_list = []() {
     uiListType *list = MEM_new_zeroed<uiListType>(Accessor::ui_idnames::list.c_str());
@@ -81,7 +80,7 @@ static void draw_items_list_with_operators(const bContext *C,
                   nullptr,
                   3,
                   5,
-                  UILIST_LAYOUT_DEFAULT,
+                  UILST_LAYOUT_DEFAULT,
                   blender::ui::TEMPLATE_LIST_FLAG_NONE);
 
   blender::ui::Layout *ops_col = &row->column(false);
@@ -105,7 +104,7 @@ static void draw_active_item_props(const bNodeTree &tree,
                                    const bNode &node,
                                    const FunctionRef<void(PointerRNA *item_ptr)> draw_item)
 {
-  using ItemT = Accessor::ItemT;
+  using ItemT = typename Accessor::ItemT;
   BLI_assert(Accessor::node_idname == node.idname);
 
   SocketItemsRef<ItemT> ref = Accessor::get_items_from_node(const_cast<bNode &>(node));
@@ -118,10 +117,20 @@ static void draw_active_item_props(const bNodeTree &tree,
 
   ItemT &item = (*ref.items)[*ref.active_index];
   PointerRNA item_ptr = RNA_pointer_create_discrete(
-      const_cast<ID *>(&tree.id),
-      *Accessor::item_srna,
-      &item);
+      const_cast<ID *>(&tree.id), *Accessor::item_srna, &item);
   draw_item(&item_ptr);
 }
 
-} // namespace blender::nodes::socket_items::ui
+template<typename Accessor> static auto draw_extend_socket_fn()
+{
+  return [](CustomSocketDrawParams &params) {
+    ::blender::ui::Layout &layout = params.layout;
+    layout.emboss_set(::blender::ui::EmbossType::None);
+    PointerRNA op_ptr = layout.op(Accessor::operator_idnames::add_item, "", ICON_ADD);
+    RNA_int_set(&op_ptr, "node_identifier", params.node.identifier);
+    RNA_boolean_set(&op_ptr, "show_dialog", true);
+    RNA_boolean_set(&op_ptr, "init_from_active", false);
+  };
+}
+
+}  // namespace blender::nodes::socket_items::ui

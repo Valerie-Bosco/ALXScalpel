@@ -42,7 +42,8 @@ static Vector<rcti> button_section_bounds_calc(const ARegion *region, const bool
   const auto finish_section_fn = [&](const rcti cur_section_bounds) {
     if (!section_bounds.is_empty() &&
         std::abs(section_bounds.last().xmax - cur_section_bounds.xmin) <
-        UI_BUTTON_SECTION_MERGE_DISTANCE) {
+            UI_BUTTON_SECTION_MERGE_DISTANCE)
+    {
       section_bounds.last().xmax = cur_section_bounds.xmax;
     }
     else {
@@ -69,7 +70,7 @@ static Vector<rcti> button_section_bounds_calc(const ARegion *region, const bool
      * active state is only useful during drawing and must be ignored for handling (at which point
      * #Block::active is false for all blocks). */
     const bool is_drawing = region->runtime->do_draw & RGN_DRAWING;
-    for (Block &block : region->runtime->blocks) {
+    for (Block &block : region->runtime->uiblocks) {
       if (is_drawing && !block.active) {
         continue;
       }
@@ -204,8 +205,8 @@ static void draw_button_sections_alignment_separator(const ARegion *region,
           prev_xmax, bounds.xmin, separator_line_width, region->winy - separator_line_width};
 
       draw_roundbox_corner_set(align == ButtonSectionsAlign::Top ?
-                                 (CNR_TOP_LEFT | CNR_TOP_RIGHT) :
-                                 (CNR_BOTTOM_LEFT | CNR_BOTTOM_RIGHT));
+                                   (CNR_TOP_LEFT | CNR_TOP_RIGHT) :
+                                   (CNR_BOTTOM_LEFT | CNR_BOTTOM_RIGHT));
       draw_rounded_corners_inverted(rounded_corner_rect, corner_radius, bg_color);
     }
 
@@ -226,15 +227,11 @@ void region_button_sections_draw(const ARegion *region,
   const Vector<rcti> section_bounds = button_section_bounds_calc(region, true);
 
   draw_button_sections_background(
-      region,
-      section_bounds,
-      static_cast<ThemeColorID>(colorid),
-      align,
-      corner_radius);
+      region, section_bounds, ThemeColorID(colorid), align, corner_radius);
   if (align != ButtonSectionsAlign::None) {
     draw_button_sections_alignment_separator(region,
                                              section_bounds,
-                                             static_cast<ThemeColorID>(colorid),
+                                             ThemeColorID(colorid),
                                              align,
                                              /* Slightly bigger corner radius, looks better. */
                                              corner_radius + 1);
@@ -253,4 +250,4 @@ bool region_button_sections_is_inside_x(const ARegion *region, const int mval_x)
   return false;
 }
 
-} // namespace blender::ui
+}  // namespace blender::ui

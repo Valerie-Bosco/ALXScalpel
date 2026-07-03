@@ -88,7 +88,7 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
   ParticleSystem *psys = psmd->psys;
   MFace *fa = nullptr, *mface = nullptr;
   ParticleData *pa;
-  KDTree_3d *tree;
+  KDTree<float3> *tree;
   RNG *rng;
   float center[3], co[3];
   int *facepa = nullptr, *vertpa = nullptr, totvert = 0, totface = 0, totpart = 0;
@@ -137,7 +137,7 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
   }
 
   /* make tree of emitter locations */
-  tree = kdtree_3d_new(totpart);
+  tree = kdtree_new<float3>(totpart);
   for (p = 0, pa = psys->particles; p < totpart; p++, pa++) {
     psys_particle_on_emitter(psmd,
                              psys->part->from,
@@ -150,9 +150,9 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
                              nullptr,
                              nullptr,
                              nullptr);
-    kdtree_3d_insert(tree, p, co);
+    kdtree_insert<float3>(tree, p, co);
   }
-  kdtree_3d_balance(tree);
+  kdtree_balance<float3>(tree);
 
   /* set face-particle-indexes to nearest particle to face center */
   for (i = 0, fa = mface; i < totface; i++, fa++) {
@@ -166,7 +166,7 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
       mul_v3_fl(center, 1.0f / 3.0f);
     }
 
-    p = kdtree_3d_find_nearest(tree, center, nullptr);
+    p = kdtree_find_nearest<float3>(tree, center, nullptr);
 
     v1 = vertpa[fa->v1];
     v2 = vertpa[fa->v2];
@@ -196,7 +196,7 @@ static void createFacepa(ExplodeModifierData *emd, ParticleSystemModifierData *p
   if (vertpa) {
     MEM_delete(vertpa);
   }
-  kdtree_3d_free(tree);
+  kdtree_free<float3>(tree);
 
   BLI_rng_free(rng);
 }
@@ -1106,10 +1106,10 @@ static ParticleSystemModifierData *findPrecedingParticlesystem(Object *ob, Modif
   }
   return psmd;
 }
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  ExplodeModifierData *emd = reinterpret_cast<ExplodeModifierData *>(modifier_data);
-  ParticleSystemModifierData *psmd = findPrecedingParticlesystem(ctx->object, modifier_data);
+  ExplodeModifierData *emd = reinterpret_cast<ExplodeModifierData *>(md);
+  ParticleSystemModifierData *psmd = findPrecedingParticlesystem(ctx->object, md);
 
   if (psmd) {
     ParticleSystem *psys = psmd->psys;

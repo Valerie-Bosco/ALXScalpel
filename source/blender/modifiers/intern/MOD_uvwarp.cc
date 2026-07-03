@@ -126,9 +126,9 @@ static void uv_warp_compute(void *__restrict userdata,
   }
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  UVWarpModifierData *umd = reinterpret_cast<UVWarpModifierData *>(modifier_data);
+  UVWarpModifierData *umd = reinterpret_cast<UVWarpModifierData *>(md);
   const MDeformVert *dvert;
   int defgrp_index;
   float warp_mat[4][4];

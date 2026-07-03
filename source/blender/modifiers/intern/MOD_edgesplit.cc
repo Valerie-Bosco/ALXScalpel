@@ -114,10 +114,10 @@ static void init_data(ModifierData *md)
   INIT_DEFAULT_STRUCT_AFTER(emd, modifier);
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
 {
   Mesh *result;
-  EdgeSplitModifierData *emd = reinterpret_cast<EdgeSplitModifierData *>(modifier_data);
+  EdgeSplitModifierData *emd = reinterpret_cast<EdgeSplitModifierData *>(md);
 
   if (!(emd->flags & (MOD_EDGESPLIT_FROMANGLE | MOD_EDGESPLIT_FROMFLAG))) {
     return mesh;

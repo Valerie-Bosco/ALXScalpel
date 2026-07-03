@@ -45,7 +45,7 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "GEO_mesh_merge_by_distance.hh"
+#include "GEO_mesh_merge_verts.hh"
 
 #include "BLI_strict_flags.h" /* IWYU pragma: keep. Keep last. */
 
@@ -190,11 +190,11 @@ static Mesh *mesh_remove_doubles_on_axis(Mesh *result,
   return result;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *meshData)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
 {
   const Mesh *mesh = meshData;
   Mesh *result;
-  ScrewModifierData *ltmd = reinterpret_cast<ScrewModifierData *>(modifier_data);
+  ScrewModifierData *ltmd = reinterpret_cast<ScrewModifierData *>(md);
   const bool use_render_params = (ctx->flag & MOD_APPLY_RENDER) != 0;
 
   int face_index = 0;

@@ -47,7 +47,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "GEO_mesh_merge_by_distance.hh"
+#include "GEO_mesh_merge_verts.hh"
 
 namespace blender {
 
@@ -461,9 +461,10 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   }
 
   if (amd->offset_type & MOD_ARR_OFF_RELATIVE) {
-    const Bounds<float3> bounds = *mesh->bounds_min_max();
-    for (j = 3; j--;) {
-      offset[3][j] += amd->scale[j] * (bounds.max[j] - bounds.min[j]);
+    if (const std::optional<Bounds<float3>> bounds = mesh->bounds_min_max()) {
+      for (j = 3; j--;) {
+        offset[3][j] += amd->scale[j] * (bounds->max[j] - bounds->min[j]);
+      }
     }
   }
 
@@ -863,9 +864,9 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   return result;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  ArrayModifierData *amd = reinterpret_cast<ArrayModifierData *>(modifier_data);
+  ArrayModifierData *amd = reinterpret_cast<ArrayModifierData *>(md);
   return arrayModifier_doArray(amd, ctx, mesh);
 }
 

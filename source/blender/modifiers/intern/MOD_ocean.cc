@@ -304,10 +304,8 @@ static Mesh *doOcean(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mes
   int cfra_for_cache;
   int i, j;
 
-  /* use cached & inverted value for speed
-   * expanded this would read...
-   *
-   * (axis / (omd->size * omd->spatial_size)) + 0.5f) */
+  /* Use cached & inverted value for speed expanded this would read:
+   * `(axis / (omd->size * omd->spatial_size)) + 0.5f`. */
 #  define OCEAN_CO(_size_co_inv, _v) ((_v * _size_co_inv) + 0.5f)
 
   const float size_co_inv = 1.0f / (omd->size * omd->spatial_size);
@@ -465,9 +463,9 @@ static Mesh *doOcean(ModifierData * /*md*/, const ModifierEvalContext * /*ctx*/,
 }
 #endif /* WITH_OCEANSIM */
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  return doOcean(modifier_data, ctx, mesh);
+  return doOcean(md, ctx, mesh);
 }
 // #define WITH_OCEANSIM
 static void panel_draw(const bContext * /*C*/, Panel *panel)

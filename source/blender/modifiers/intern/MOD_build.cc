@@ -47,10 +47,10 @@ static bool depends_on_time(Scene * /*scene*/, ModifierData * /*md*/)
   return true;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result;
-  BuildModifierData *bmd = reinterpret_cast<BuildModifierData *>(modifier_data);
+  BuildModifierData *bmd = reinterpret_cast<BuildModifierData *>(md);
   int i, j, k;
   int faces_dst_num, edges_dst_num, loops_dst_num = 0;
   float frac;

@@ -1,9 +1,3 @@
-# generic files to ignore
-*.check_cache
-
-/build_windows_Full_x64_vc17_Release/
-/build_windows_x64_vc17_Debug/
-
 # python temp paths
 __pycache__/
 *.py[cod]
@@ -40,6 +34,7 @@ Desktop.ini
 /doc/python_api/sphinx-in-tmp/
 /doc/python_api/sphinx-in/
 /doc/python_api/sphinx-out/
+/doc/python_api/stubs/
 /doc/python_api/rst/bmesh.ops.rst
 
 # in-source lib downloads and staging

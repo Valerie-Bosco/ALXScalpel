@@ -86,7 +86,8 @@ static void compute_vertex_mask__armature_mode(const MDeformVert *dvert,
 
   for (bDeformGroup &def : mesh->vertex_group_names) {
     bPoseChannel *pchan = BKE_pose_channel_find_name(armature_ob->pose, def.name);
-    bool bone_for_group_exists = pchan && pchan->bone && (pchan->flag & POSE_SELECTED);
+    const bool bone_for_group_exists = pchan && pchan->bone_get(*armature_ob) &&
+                                       (pchan->flag & POSE_SELECTED);
     selected_bone_uses_group.append(bone_for_group_exists);
   }
   const int64_t total_size = selected_bone_uses_group.size();
@@ -586,9 +587,9 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
  * 2. Find edges and faces only using those vertices.
  * 3. Create a new mesh that only uses the found vertices, edges and faces.
  */
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
 {
-  MaskModifierData *mmd = reinterpret_cast<MaskModifierData *>(modifier_data);
+  MaskModifierData *mmd = reinterpret_cast<MaskModifierData *>(md);
   const bool invert_mask = mmd->flag & MOD_MASK_INV;
   const bool use_interpolation = mmd->mode == MOD_MASK_MODE_VGROUP &&
                                  (mmd->flag & MOD_MASK_SMOOTH);
@@ -601,7 +602,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
 
   /* Quick test to see if we can return early. */
   if (!ELEM(mmd->mode, MOD_MASK_MODE_ARM, MOD_MASK_MODE_VGROUP) || (mesh->verts_num == 0) ||
-      BLI_listbase_is_empty(&mesh->vertex_group_names))
+      mesh->vertex_group_names.is_empty())
   {
     return mesh;
   }

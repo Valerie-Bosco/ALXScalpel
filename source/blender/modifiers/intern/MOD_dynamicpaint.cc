@@ -93,9 +93,9 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   }
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  DynamicPaintModifierData *pmd = reinterpret_cast<DynamicPaintModifierData *>(modifier_data);
+  DynamicPaintModifierData *pmd = reinterpret_cast<DynamicPaintModifierData *>(md);
 
   /* Don't apply dynamic paint on ORCO mesh stack. */
   if (!(ctx->flag & MOD_APPLY_ORCO)) {

@@ -508,28 +508,31 @@ static Mesh *non_float_boolean_mesh(BooleanModifierData *bmd,
     }
     return result;
   }
-  if (material_mode == eBooleanModifierMaterialMode_Transfer) {
-    MEM_SAFE_DELETE(result->mat);
-    result->mat = MEM_new_array_uninitialized<Material *>(size_t(materials.size()), __func__);
-    result->totcol = materials.size();
-    MutableSpan(result->mat, result->totcol).copy_from(materials);
-  }
 
-  geometry::debug_randomize_mesh_order(result);
+  if (result) {
+    if (material_mode == eBooleanModifierMaterialMode_Transfer) {
+      MEM_SAFE_DELETE(result->mat);
+      result->mat = MEM_new_array_uninitialized<Material *>(size_t(materials.size()), __func__);
+      result->totcol = materials.size();
+      MutableSpan(result->mat, result->totcol).copy_from(materials);
+    }
+
+    geometry::debug_randomize_mesh_order(result);
+  }
 
   return result;
 }
 #endif
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  BooleanModifierData *bmd = reinterpret_cast<BooleanModifierData *>(modifier_data);
+  BooleanModifierData *bmd = reinterpret_cast<BooleanModifierData *>(md);
   Object *object = ctx->object;
   Mesh *result = mesh;
   Collection *collection = bmd->collection;
 
   /* Return result for certain errors. */
-  if (BMD_error_messages(ctx->object, modifier_data)) {
+  if (BMD_error_messages(ctx->object, md)) {
     return result;
   }
 
@@ -565,7 +568,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
         bool is_flip;
         BMesh *bm = BMD_mesh_bm_create(mesh, object, mesh_operand_ob, operand_ob, &is_flip);
 
-        BMD_mesh_intersection(bm, modifier_data, ctx, mesh_operand_ob, object, operand_ob, is_flip);
+        BMD_mesh_intersection(bm, md, ctx, mesh_operand_ob, object, operand_ob, is_flip);
 
         result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
 
@@ -573,7 +576,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
       }
 
       if (result == nullptr) {
-        BKE_modifier_set_error(object, modifier_data, "Cannot execute boolean operation");
+        BKE_modifier_set_error(object, md, "Cannot execute boolean operation");
       }
     }
   }
@@ -597,7 +600,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
         bool is_flip;
         BMesh *bm = BMD_mesh_bm_create(result, object, mesh_operand_ob, operand_ob, &is_flip);
 
-        BMD_mesh_intersection(bm, modifier_data, ctx, mesh_operand_ob, object, operand_ob, is_flip);
+        BMD_mesh_intersection(bm, md, ctx, mesh_operand_ob, object, operand_ob, is_flip);
 
         /* Needed for multiple objects to work. */
         if (result == mesh) {

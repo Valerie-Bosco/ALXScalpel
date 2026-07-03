@@ -50,7 +50,7 @@ static void init_data(ModifierData *md)
   vmmd->resolution_mode = VOLUME_TO_MESH_RESOLUTION_MODE_GRID;
   vmmd->voxel_amount = 32;
   vmmd->voxel_size = 0.1f;
-  vmmd->flag = 0;
+  vmmd->flag = VolumeToMeshFlag{};
 }
 
 static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
@@ -119,10 +119,10 @@ static Mesh *create_empty_mesh(const Mesh *input_mesh)
   return new_mesh;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *input_mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *input_mesh)
 {
 #ifdef WITH_OPENVDB
-  VolumeToMeshModifierData *vmmd = reinterpret_cast<VolumeToMeshModifierData *>(modifier_data);
+  VolumeToMeshModifierData *vmmd = reinterpret_cast<VolumeToMeshModifierData *>(md);
   if (vmmd->object == nullptr) {
     return create_empty_mesh(input_mesh);
   }
@@ -145,7 +145,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
   BKE_volume_load(volume, DEG_get_bmain(ctx->depsgraph));
   const bke::VolumeGridData *volume_grid = BKE_volume_grid_find(volume, vmmd->grid_name);
   if (volume_grid == nullptr) {
-    BKE_modifier_set_error(ctx->object, modifier_data, "Cannot find '%s' grid", vmmd->grid_name);
+    BKE_modifier_set_error(ctx->object, md, "Cannot find '%s' grid", vmmd->grid_name);
     return create_empty_mesh(input_mesh);
   }
 
@@ -174,7 +174,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
   Mesh *mesh = bke::volume_to_mesh(
       *transformed_grid, resolution, vmmd->threshold, vmmd->adaptivity);
   if (mesh == nullptr) {
-    BKE_modifier_set_error(ctx->object, modifier_data, "Could not generate mesh from grid");
+    BKE_modifier_set_error(ctx->object, md, "Could not generate mesh from grid");
     return create_empty_mesh(input_mesh);
   }
 
@@ -182,8 +182,8 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
   bke::mesh_smooth_set(*mesh, vmmd->flag & VOLUME_TO_MESH_USE_SMOOTH_SHADE);
   return mesh;
 #else
-  UNUSED_VARS(modifier_data);
-  BKE_modifier_set_error(ctx->object, modifier_data, "Compiled without OpenVDB");
+  UNUSED_VARS(md);
+  BKE_modifier_set_error(ctx->object, md, "Compiled without OpenVDB");
   return create_empty_mesh(input_mesh);
 #endif
 }

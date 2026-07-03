@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
+from bpy.types import (
+    Menu,
+)
+
 from bpy.app.translations import (
     pgettext_iface as iface_,
     pgettext_tip as tip_,
     contexts as i18n_contexts,
-)
-from bpy.types import (
-    Menu,
 )
 
 __all__ = (
@@ -29,16 +30,17 @@ if "_icon_cache" in locals():
             release(icon_value)
     del release
 
+
 # (icon_name -> icon_value) map
 _icon_cache = {}
 
 
 def _keymap_fn_from_seq(keymap_data):
+
     def keymap_fn(km):
         if keymap_fn.keymap_data:
             from bl_keymap_utils.io import keymap_init_from_data
             keymap_init_from_data(km, keymap_fn.keymap_data)
-
     keymap_fn.keymap_data = keymap_data
     return keymap_fn
 
@@ -48,7 +50,6 @@ def _item_is_fn(item):
 
 
 from collections import namedtuple
-
 ToolDef = namedtuple(
     "ToolDef",
     (
@@ -159,7 +160,6 @@ def from_fn(fn):
 def with_args(**kw):
     def from_fn(fn):
         return ToolDef.from_dict(fn(**kw))
-
     return from_fn
 
 
@@ -174,7 +174,6 @@ class ToolActivePanelHelper:
     # bl_space_type = 'VIEW_3D'
     # bl_region_type = 'UI'
     bl_label = "Active Tool"
-
     # bl_category = "Tool"
 
     def draw(self, context):
@@ -732,26 +731,20 @@ class ToolSelectPanelHelper:
             sub = ui_gen.send(False)
 
             if use_menu:
-                if sub is not None:
-                    _operator_hold_menu = sub.operator_menu_hold(
-                        "wm.tool_set_by_id",
-                        text=item.label if show_text else "",
-                        depress=is_active,
-                        menu="WM_MT_toolsystem_submenu",
-                        icon_value=icon_value,
-                    )
-                    if _operator_hold_menu is not None:
-                        _operator_hold_menu.name = item.idname
+                sub.operator_menu_hold(
+                    "wm.tool_set_by_id",
+                    text=item.label if show_text else "",
+                    depress=is_active,
+                    menu="WM_MT_toolsystem_submenu",
+                    icon_value=icon_value,
+                ).name = item.idname
             else:
-                if sub is not None:
-                    _operator = sub.operator(
-                        "wm.tool_set_by_id",
-                        text=item.label if show_text else "",
-                        depress=is_active,
-                        icon_value=icon_value,
-                    )
-                    if _operator is not None:
-                        _operator.name = item.idname
+                sub.operator(
+                    "wm.tool_set_by_id",
+                    text=item.label if show_text else "",
+                    depress=is_active,
+                    icon_value=icon_value,
+                ).name = item.idname
         # Signal to finish any remaining layout edits.
         ui_gen.send(None)
 
@@ -786,9 +779,9 @@ class ToolSelectPanelHelper:
 
     @staticmethod
     def draw_active_tool_fallback(
-        context, layout, tool,
-        *,
-        is_horizontal_layout=False,
+            context, layout, tool,
+            *,
+            is_horizontal_layout=False,
     ):
         idname_fallback = tool.idname_fallback
         space_type = tool.space_type
@@ -803,10 +796,10 @@ class ToolSelectPanelHelper:
 
     @staticmethod
     def draw_active_tool_header(
-        context, layout,
-        *,
-        show_tool_icon_always=False,
-        tool_key=None,
+            context, layout,
+            *,
+            show_tool_icon_always=False,
+            tool_key=None,
     ):
         if tool_key is None:
             space_type, mode = ToolSelectPanelHelper._tool_key_from_context(context)
@@ -1063,8 +1056,8 @@ def _activate_by_item(context, space_type, item, index, *, as_fallback=False):
     )
 
     if (
-        (gizmo_group != "") and
-        (props := tool.gizmo_group_properties(gizmo_group))
+            (gizmo_group != "") and
+            (props := tool.gizmo_group_properties(gizmo_group))
     ):
         if props is None:
             print("Error:", gizmo_group, "could not access properties!")
@@ -1088,7 +1081,6 @@ def _activate_by_item(context, space_type, item, index, *, as_fallback=False):
     if item.draw_cursor is not None:
         def handle_fn(context, item, tool, xy):
             item.draw_cursor(context, tool, xy)
-
         if view_type == 'PREVIEW':
             handle = WindowManager.draw_cursor_add(handle_fn, (context, item, tool), space_type, 'PREVIEW')
         else:
@@ -1111,6 +1103,7 @@ def activate_by_id(context, space_type, idname, *, as_fallback=False):
 
 
 def activate_by_id_or_cycle(context, space_type, idname, *, offset=1, as_fallback=False):
+
     # Only cycle when the active tool is activated again.
     cls = ToolSelectPanelHelper._tool_class_from_space_type(space_type)
     item, _index = cls._tool_get_by_id(context, idname)
@@ -1176,7 +1169,6 @@ def description_from_id(context, space_type, idname, *, use_operator=True):
             import _bpy
             return tip_(_bpy.ops.get_rna_type(operator).description)
     return ""
-
 
 # NOTE: used by tool-tips in C++ (not called from Python).
 
@@ -1260,6 +1252,5 @@ classes = (
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
-
     for cls in classes:
         register_class(cls)

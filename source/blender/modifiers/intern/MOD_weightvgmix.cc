@@ -195,11 +195,11 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
   return (wmd->defgrp_name_a[0] == '\0');
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   BLI_assert(mesh != nullptr);
 
-  WeightVGMixModifierData *wmd = reinterpret_cast<WeightVGMixModifierData *>(modifier_data);
+  WeightVGMixModifierData *wmd = reinterpret_cast<WeightVGMixModifierData *>(md);
 
   MDeformWeight **dw1, **tdw1, **dw2, **tdw2;
   float *org_w;
@@ -230,7 +230,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
   /* Check if we can just return the original mesh.
    * Must have verts and therefore verts assigned to vgroups to do anything useful!
    */
-  if ((verts_num == 0) || BLI_listbase_is_empty(&mesh->vertex_group_names)) {
+  if ((verts_num == 0) || mesh->vertex_group_names.is_empty()) {
     return mesh;
   }
 

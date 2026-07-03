@@ -6,6 +6,8 @@
  * \ingroup modifiers
  */
 
+#include <fmt/format.h>
+
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -83,9 +85,9 @@ static void updateFaceCount(const ModifierEvalContext *ctx,
   }
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *meshData)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
 {
-  DecimateModifierData *dmd = reinterpret_cast<DecimateModifierData *>(modifier_data);
+  DecimateModifierData *dmd = reinterpret_cast<DecimateModifierData *>(md);
   Mesh *mesh = meshData, *result = nullptr;
   BMesh *bm;
   bool calc_vert_normal;
@@ -126,7 +128,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
   }
 
   if (dmd->face_count <= 3) {
-    BKE_modifier_set_error(ctx->object, modifier_data, "Modifier requires more than 3 input faces");
+    BKE_modifier_set_error(ctx->object, md, "Modifier requires more than 3 input faces");
     return mesh;
   }
 
@@ -223,10 +225,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
   int decimate_type = RNA_enum_get(ptr, "decimate_type");
-  char count_info[64];
   char face_count_str[BLI_STR_FORMAT_INT32_GROUPED_SIZE];
   BLI_str_format_int_grouped(face_count_str, RNA_int_get(ptr, "face_count"));
-  SNPRINTF(count_info, RPT_("Face Count: %s"), face_count_str);
+  std::string count_info = fmt::format(fmt::runtime(RPT_("Face Count: {}")), face_count_str);
 
   layout.prop(ptr, "decimate_type", ui::ITEM_R_EXPAND, std::nullopt, ICON_NONE);
 

@@ -52,9 +52,10 @@
 
 namespace blender {
 
-/**************************************
- * Modifiers functions.               *
- **************************************/
+/* -------------------------------------------------------------------- */
+/** \name Modifiers Functions
+ * \{ */
+
 static void init_data(ModifierData *md)
 {
   WeightVGEditModifierData *wmd = reinterpret_cast<WeightVGEditModifierData *>(md);
@@ -148,11 +149,11 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
   return (wmd->defgrp_name[0] == '\0');
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   BLI_assert(mesh != nullptr);
 
-  WeightVGEditModifierData *wmd = reinterpret_cast<WeightVGEditModifierData *>(modifier_data);
+  WeightVGEditModifierData *wmd = reinterpret_cast<WeightVGEditModifierData *>(md);
 
   MDeformWeight **dw = nullptr;
   float *org_w; /* Array original weights. */
@@ -174,7 +175,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
   /* Check if we can just return the original mesh.
    * Must have verts and therefore verts assigned to vgroups to do anything useful!
    */
-  if ((verts_num == 0) || BLI_listbase_is_empty(&mesh->vertex_group_names)) {
+  if ((verts_num == 0) || mesh->vertex_group_names.is_empty()) {
     return mesh;
   }
 
@@ -383,6 +384,8 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
     BKE_curvemapping_blend_read(reader, wmd->cmap_curve);
   }
 }
+
+/** \} */
 
 ModifierTypeInfo modifierType_WeightVGEdit = {
     /*idname*/ "VertexWeightEdit",

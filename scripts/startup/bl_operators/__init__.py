@@ -4,15 +4,14 @@
 
 from __future__ import annotations
 
+# support reloading sub-modules
 if "bpy" in locals():
     from importlib import reload
-
     _modules_loaded[:] = [reload(val) for val in _modules_loaded]
     del reload
 
 _modules = [
     "add_mesh_torus",
-    "ALX_object_mode",
     "anim",
     "assets",
     "bone_selection_sets",
@@ -22,7 +21,6 @@ _modules = [
     "constraint",
     "copy_global_transform",
     "file",
-    # "freestyle",
     "geometry_nodes",
     "grease_pencil",
     "image",
@@ -45,8 +43,8 @@ _modules = [
     "uvcalc_transform",
     "vertexpaint_dirt",
     "view3d",
-    "wm",
     "world",
+    "wm",
 ]
 
 import bpy

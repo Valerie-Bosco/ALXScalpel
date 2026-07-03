@@ -593,10 +593,10 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   }
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   return normalEditModifier_do(
-      reinterpret_cast<NormalEditModifierData *>(modifier_data), ctx, ctx->object, mesh);
+      reinterpret_cast<NormalEditModifierData *>(md), ctx, ctx->object, mesh);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)

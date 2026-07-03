@@ -62,9 +62,9 @@ namespace blender {
 #  include "BLI_time_utildefines.h"
 #endif
 
-/**************************************
- * Util functions.                    *
- **************************************/
+/* -------------------------------------------------------------------- */
+/** \name Util functions.
+ * \{ */
 
 /* Util macro. */
 #define OUT_OF_MEMORY() (void)printf("WeightVGProximity: Out of memory.\n")
@@ -297,9 +297,12 @@ static void do_map(Object *ob,
   }
 }
 
-/**************************************
- * Modifiers functions.               *
- **************************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Modifiers functions.
+ * \{ */
+
 static void init_data(ModifierData *md)
 {
   WeightVGProximityModifierData *wmd = reinterpret_cast<WeightVGProximityModifierData *>(md);
@@ -411,11 +414,11 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
   return (wmd->proximity_ob_target == nullptr);
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   BLI_assert(mesh != nullptr);
 
-  WeightVGProximityModifierData *wmd = reinterpret_cast<WeightVGProximityModifierData *>(modifier_data);
+  WeightVGProximityModifierData *wmd = reinterpret_cast<WeightVGProximityModifierData *>(md);
   MDeformWeight **dw, **tdw;
   Object *ob = ctx->object;
   Object *obr = nullptr; /* Our target object. */
@@ -444,7 +447,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
   /* Check if we can just return the original mesh.
    * Must have verts and therefore verts assigned to vgroups to do anything useful!
    */
-  if ((verts_num == 0) || BLI_listbase_is_empty(&mesh->vertex_group_names)) {
+  if ((verts_num == 0) || mesh->vertex_group_names.is_empty()) {
     return mesh;
   }
 
@@ -716,6 +719,8 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
     BKE_curvemapping_blend_read(reader, wmd->cmap_curve);
   }
 }
+
+/** \} */
 
 ModifierTypeInfo modifierType_WeightVGProximity = {
     /*idname*/ "VertexWeightProximity",

@@ -26,7 +26,6 @@
 #include "BKE_context.hh"
 
 namespace blender {
-
 namespace bke::id {
 class IDRemapper;
 }
@@ -38,7 +37,7 @@ class AssetRepresentation;
 namespace ui {
 struct Layout;
 struct Block;
-} // namespace ui
+}  // namespace ui
 
 struct ARegion;
 struct ARegionType;
@@ -237,7 +236,6 @@ enum class ARegionTypeFlag {
    */
   HideSinglePanelCategories = (1 << 2),
 };
-
 ENUM_OPERATORS(ARegionTypeFlag)
 
 /* #ARegionType::lock */
@@ -330,7 +328,7 @@ struct ARegionType {
 
   /** Hardcoded constraints, smaller than these values region is not visible. */
   int minsizex, minsizey;
-  /** When new region opens (region prefsizex/y are zero then. */
+  /** When new region opens (region prefsizex/y are zero then). */
   int prefsizex, prefsizey;
   /** Default keymaps to add. */
   int keymapflag;
@@ -357,6 +355,7 @@ struct PanelType {
   char label[BKE_ST_MAXNAME];
   /** For panel tooltip. */
   const char *description;
+  int icon;
   char translation_context[BKE_ST_MAXNAME];
   /** For buttons window. */
   char context[BKE_ST_MAXNAME];
@@ -537,7 +536,7 @@ struct ARegionRuntime {
 
   /** Maps #ui::Block::name to ui::Block for faster lookups. */
   Map<std::string, ui::Block *> block_name_map;
-  ListBaseT<ui::Block> blocks = {};
+  ListBaseT<ui::Block> uiblocks = {};
 
   ListBaseT<wmEventHandler> handlers = {};
 
@@ -570,7 +569,7 @@ struct ARegionRuntime {
   Panel *popup_block_panel = nullptr;
 };
 
-} // namespace bke
+}  // namespace bke
 
 /* #uiList types. */
 
@@ -652,7 +651,6 @@ enum class MenuTypeFlag {
    */
   SearchOnKeyPress = (1 << 1),
 };
-
 ENUM_OPERATORS(MenuTypeFlag)
 
 struct MenuType {
@@ -704,7 +702,6 @@ enum AssetShelfTypeFlag {
    */
   ASSET_SHELF_TYPE_FLAG_ACTIVATE_FOR_CONTEXT_MENU = (1 << 3),
 };
-
 ENUM_OPERATORS(AssetShelfTypeFlag);
 
 #define ASSET_SHELF_PREVIEW_SIZE_DEFAULT 48
@@ -845,7 +842,7 @@ LayoutPanelState *BKE_panel_layout_panel_state_ensure(Panel *panel,
  * inputs
  */
 ARegion *BKE_region_find_in_listbase_by_type(const ListBaseT<ARegion> *regionbase,
-                                             int region_type);
+                                             const int region_type);
 
 void BKE_area_copy(ScrArea *area_dst, ScrArea *area_src);
 
@@ -858,7 +855,7 @@ void BKE_area_copy(ScrArea *area_dst, ScrArea *area_src);
 ARegion *BKE_area_find_region_type(const ScrArea *area, int region_type);
 ARegion *BKE_area_find_region_active_win(const ScrArea *area);
 ARegion *BKE_area_find_region_xy(const ScrArea *area, int regiontype, const int xy[2])
-ATTR_NONNULL(3);
+    ATTR_NONNULL(3);
 
 /**
  * \note This is only for screen level regions (typically menus/popups).
@@ -872,22 +869,23 @@ ARegion *BKE_screen_find_region_xy(const bScreen *screen,
                                    const int xy[2]) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1, 3);
 
 ARegion *BKE_screen_find_main_region_at_xy(const bScreen *screen, int space_type, const int xy[2])
-ATTR_NONNULL(1, 3);
+    ATTR_NONNULL(1, 3);
 /**
  * \note Ideally we can get the area from the context,
  * there are a few places however where this isn't practical.
  */
 ScrArea *BKE_screen_find_area_from_space(const bScreen *screen,
                                          const SpaceLink *sl) ATTR_WARN_UNUSED_RESULT
-ATTR_NONNULL(1, 2);
+    ATTR_NONNULL(1, 2);
 ARegion *BKE_screen_find_region_in_space(const bScreen *screen,
                                          const SpaceLink *sl,
                                          int region_type) ATTR_WARN_UNUSED_RESULT
-ATTR_NONNULL(1, 2);
+    ATTR_NONNULL(1, 2);
 /**
  * \note used to get proper RNA paths for spaces (editors).
  */
 std::optional<std::string> BKE_screen_path_from_screen_to_space(const PointerRNA *ptr);
+std::optional<std::string> BKE_screen_path_from_screen_to_area(const PointerRNA *ptr);
 /**
  * \note Using this function is generally a last resort, you really want to be
  * using the context when you can - campbell
@@ -897,7 +895,7 @@ ScrArea *BKE_screen_area_map_find_area_xy(const ScrAreaMap *areamap,
                                           int spacetype,
                                           const int xy[2]) ATTR_NONNULL(1, 3);
 ScrArea *BKE_screen_find_area_xy(const bScreen *screen, int spacetype, const int xy[2])
-ATTR_NONNULL(1, 3);
+    ATTR_NONNULL(1, 3);
 
 void BKE_screen_gizmo_tag_refresh(bScreen *screen);
 
@@ -976,4 +974,4 @@ void BKE_screen_area_blend_read_after_liblink(BlendLibReader *reader,
  */
 bool BKE_screen_blend_read_data(BlendDataReader *reader, bScreen *screen);
 
-} // namespace blender
+}  // namespace blender

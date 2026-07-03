@@ -122,9 +122,9 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
   (DT_TYPE_BWEIGHT_VERT | DT_TYPE_BWEIGHT_EDGE | DT_TYPE_CREASE | DT_TYPE_SHARP_EDGE | \
    DT_TYPE_LNOR | DT_TYPE_SHARP_FACE)
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *me_mod)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *me_mod)
 {
-  DataTransferModifierData *dtmd = reinterpret_cast<DataTransferModifierData *>(modifier_data);
+  DataTransferModifierData *dtmd = reinterpret_cast<DataTransferModifierData *>(md);
   Mesh *result = me_mod;
   ReportList reports;
 
@@ -193,7 +193,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
 
   if (BKE_reports_contain(&reports, RPT_ERROR)) {
     const char *report_str = BKE_reports_string(&reports, RPT_ERROR);
-    BKE_modifier_set_error(ctx->object, modifier_data, "%s", report_str);
+    BKE_modifier_set_error(ctx->object, md, "%s", report_str);
     MEM_delete(report_str);
   }
 

@@ -189,14 +189,14 @@ static ModifierData *modifier_get_last_enabled_for_mode(const Scene *scene,
 
 /* Modifier itself. */
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result = mesh;
 #if !defined(WITH_OPENSUBDIV)
-  BKE_modifier_set_error(ctx->object, modifier_data, "Disabled, built without OpenSubdiv");
+  BKE_modifier_set_error(ctx->object, md, "Disabled, built without OpenSubdiv");
   return result;
 #endif
-  SubsurfModifierData *smd = reinterpret_cast<SubsurfModifierData *>(modifier_data);
+  SubsurfModifierData *smd = reinterpret_cast<SubsurfModifierData *>(md);
   if (!BKE_subsurf_modifier_runtime_init(smd, (ctx->flag & MOD_APPLY_RENDER) != 0)) {
     return result;
   }

@@ -87,9 +87,9 @@ static void init_data(ModifierData *md)
   md->mode |= eModifierMode_Editmode;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
 {
-  TriangulateModifierData *tmd = reinterpret_cast<TriangulateModifierData *>(modifier_data);
+  TriangulateModifierData *tmd = reinterpret_cast<TriangulateModifierData *>(md);
   Mesh *result = triangulate_mesh(
       mesh, tmd->quad_method, tmd->ngon_method, tmd->min_vertices, tmd->flag);
   return (result) ? result : mesh;

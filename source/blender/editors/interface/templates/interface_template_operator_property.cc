@@ -50,11 +50,12 @@ static bool layout_operator_buts_poll_property(PointerRNA * /*ptr*/,
                                                PropertyRNA *prop,
                                                void *user_data)
 {
-  auto params = static_cast<uiTemplateOperatorPropertyPollParam *>(
-    user_data);
+  uiTemplateOperatorPropertyPollParam *params = static_cast<uiTemplateOperatorPropertyPollParam *>(
+      user_data);
 
   if ((params->flag & TEMPLATE_OP_PROPS_HIDE_ADVANCED) &&
-      (RNA_property_tags(prop) & OP_PROP_TAG_ADVANCED)) {
+      (RNA_property_tags(prop) & OP_PROP_TAG_ADVANCED))
+  {
     return false;
   }
   return params->op->type->poll_property(params->C, params->op, prop);
@@ -68,7 +69,7 @@ static AutoPropButsReturn template_operator_property_buts_draw_single(
     int layout_flags)
 {
   Block *block = layout.block();
-  auto return_info = static_cast<AutoPropButsReturn>(0);
+  AutoPropButsReturn return_info = AutoPropButsReturn(0);
 
   if (!op->properties) {
     op->properties = bke::idprop::create_group("wmOperatorProperties").release();
@@ -132,9 +133,8 @@ static AutoPropButsReturn template_operator_property_buts_draw_single(
     /* main draw call */
     return_info = uiDefAutoButsRNA(&layout,
                                    &ptr,
-                                   op->type->poll_property ?
-                                     layout_operator_buts_poll_property :
-                                     nullptr,
+                                   op->type->poll_property ? layout_operator_buts_poll_property :
+                                                             nullptr,
                                    op->type->poll_property ? &user_data : nullptr,
                                    op->type->prop,
                                    label_align,
@@ -209,22 +209,13 @@ static void template_operator_property_buts_draw_recursive(const bContext *C,
   if (op->type->flag & OPTYPE_MACRO) {
     for (wmOperator &macro_op : op->macro) {
       template_operator_property_buts_draw_recursive(
-          C,
-          &macro_op,
-          layout,
-          label_align,
-          layout_flags,
-          r_has_advanced);
+          C, &macro_op, layout, label_align, layout_flags, r_has_advanced);
     }
   }
   else {
     /* Might want to make label_align adjustable somehow. */
     AutoPropButsReturn return_info = template_operator_property_buts_draw_single(
-        C,
-        op,
-        layout,
-        label_align,
-        layout_flags);
+        C, op, layout, label_align, layout_flags);
     if (return_info & PROP_BUTS_ANY_FAILED_CHECK) {
       if (r_has_advanced) {
         *r_has_advanced = true;
@@ -254,20 +245,18 @@ static bool layout_operator_properties_only_booleans(const bContext *C,
     PointerRNA ptr = RNA_pointer_create_discrete(&wm->id, op->type->srna, op->properties);
 
     bool all_booleans = true;
-    RNA_STRUCT_BEGIN(&ptr, prop)
-      {
-        if (RNA_property_flag(prop) & PROP_HIDDEN) {
-          continue;
-        }
-        if (op->type->poll_property && !
-            layout_operator_buts_poll_property(&ptr, prop, &user_data)) {
-          continue;
-        }
-        if (RNA_property_type(prop) != PROP_BOOLEAN) {
-          all_booleans = false;
-          break;
-        }
+    RNA_STRUCT_BEGIN (&ptr, prop) {
+      if (RNA_property_flag(prop) & PROP_HIDDEN) {
+        continue;
       }
+      if (op->type->poll_property && !layout_operator_buts_poll_property(&ptr, prop, &user_data)) {
+        continue;
+      }
+      if (RNA_property_type(prop) != PROP_BOOLEAN) {
+        all_booleans = false;
+        break;
+      }
+    }
     RNA_STRUCT_END;
     if (all_booleans == false) {
       return false;
@@ -278,11 +267,7 @@ static bool layout_operator_properties_only_booleans(const bContext *C,
 }
 
 void uiTemplateOperatorPropertyButs(
-    const bContext *C,
-    Layout *layout,
-    wmOperator *op,
-    eButLabelAlign label_align,
-    short flag)
+    const bContext *C, Layout *layout, wmOperator *op, eButLabelAlign label_align, short flag)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
 
@@ -325,17 +310,12 @@ void template_operator_redo_properties(Layout *layout, const bContext *C)
 
     block_func_handle_set(block, ED_undo_operator_repeat_cb_evt, op);
     template_operator_property_buts_draw_recursive(
-        C,
-        op,
-        *layout,
-        BUT_LABEL_ALIGN_NONE,
-        layout_flags,
-        nullptr /* &has_advanced */);
+        C, op, *layout, BUT_LABEL_ALIGN_NONE, layout_flags, nullptr /* &has_advanced */);
     /* Warning! this leaves the handle function for any other users of this block. */
 
 #if 0
     if (has_advanced) {
-      layout->op("SCREEN_OT_redo_last", IFACE_("More..."), ICON_NONE);
+      layout->op( "SCREEN_OT_redo_last", IFACE_("More..."), ICON_NONE);
     }
 #endif
   }
@@ -379,11 +359,7 @@ static void draw_import_properties(bContext *C, Layout &layout, wmOperator *op)
   col.prop(op->ptr, prop, RNA_NO_INDEX, 0, UI_ITEM_NONE, std::nullopt, ICON_NONE, "");
 
   template_operator_property_buts_draw_single(
-      C,
-      op,
-      layout,
-      BUT_LABEL_ALIGN_NONE,
-      TEMPLATE_OP_PROPS_HIDE_PRESETS);
+      C, op, layout, BUT_LABEL_ALIGN_NONE, TEMPLATE_OP_PROPS_HIDE_PRESETS);
 }
 
 void template_collection_importer(Layout *layout, bContext *C)
@@ -406,9 +382,7 @@ void template_collection_importer(Layout *layout, bContext *C)
 
   /* Draw the importer. */
   PointerRNA importer_ptr = RNA_pointer_create_discrete(
-      &collection->id,
-      RNA_CollectionImport,
-      data);
+      &collection->id, RNA_CollectionImport, data);
   PanelLayout panel = layout->panel_prop(C, &importer_ptr, "is_open");
 
   const bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
@@ -427,9 +401,7 @@ void template_collection_importer(Layout *layout, bContext *C)
 
   /* Assign temporary operator to uiBlock, which takes ownership. */
   PointerRNA properties = RNA_pointer_create_discrete(
-      &collection->id,
-      ot->srna,
-      data->import_properties);
+      &collection->id, ot->srna, data->import_properties);
   wmOperator *op = minimal_operator_create(ot, &properties);
   block_set_active_operator(panel.header->block(), op, true);
 
@@ -442,11 +414,7 @@ void template_collection_importer(Layout *layout, bContext *C)
 }
 
 static void draw_export_controls(
-    bContext *C,
-    Layout &layout,
-    const std::string &label,
-    int index,
-    bool valid)
+    bContext *C, Layout &layout, const std::string &label, int index, bool valid)
 {
   layout.label(label, ICON_NONE);
   if (valid) {
@@ -489,7 +457,7 @@ static void draw_export_properties(bContext *C,
                                               layout,
                                               BUT_LABEL_ALIGN_NONE,
                                               TEMPLATE_OP_PROPS_HIDE_PRESETS |
-                                              TEMPLATE_OP_PROPS_ALLOW_UNDO_PUSH);
+                                                  TEMPLATE_OP_PROPS_ALLOW_UNDO_PUSH);
 }
 
 static void draw_exporter_item(uiList * /*ui_list*/,
@@ -526,19 +494,19 @@ void template_collection_exporters(Layout *layout, bContext *C)
   /* Draw exporter list and controls. */
   PointerRNA collection_ptr = RNA_id_pointer_create(&collection->id);
   Layout &row = layout->row(false);
-  template_uilist(&row,
-                  C,
-                  exporter_item_list->idname,
-                  "",
-                  &collection_ptr,
-                  "exporters",
-                  &collection_ptr,
-                  "active_exporter_index",
-                  nullptr,
-                  3,
-                  5,
-                  UILIST_LAYOUT_DEFAULT,
-                  TEMPLATE_LIST_FLAG_NONE);
+  ui::template_uilist(&row,
+                      C,
+                      exporter_item_list->idname,
+                      "",
+                      &collection_ptr,
+                      "exporters",
+                      &collection_ptr,
+                      "active_exporter_index",
+                      nullptr,
+                      3,
+                      5,
+                      UILST_LAYOUT_DEFAULT,
+                      TEMPLATE_LIST_FLAG_NONE);
 
   Layout *col = &row.column(true);
   col->menu("COLLECTION_MT_exporter_add", "", ICON_ADD);
@@ -553,18 +521,16 @@ void template_collection_exporters(Layout *layout, bContext *C)
 
   col = &layout->column(true);
   col->op("COLLECTION_OT_export_all", std::nullopt, ICON_EXPORT);
-  col->enabled_set(!BLI_listbase_is_empty(exporters));
+  col->enabled_set(!exporters->is_empty());
 
   /* Draw the active exporter. */
-  auto data = static_cast<CollectionExport *>(BLI_findlink(exporters, index));
+  CollectionExport *data = static_cast<CollectionExport *>(BLI_findlink(exporters, index));
   if (!data) {
     return;
   }
 
   PointerRNA exporter_ptr = RNA_pointer_create_discrete(
-      &collection->id,
-      RNA_CollectionExport,
-      data);
+      &collection->id, RNA_CollectionExport, data);
   PanelLayout panel = layout->panel_prop(C, &exporter_ptr, "is_open");
 
   bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
@@ -583,9 +549,7 @@ void template_collection_exporters(Layout *layout, bContext *C)
 
   /* Assign temporary operator to Block, which takes ownership. */
   PointerRNA properties = RNA_pointer_create_discrete(
-      &collection->id,
-      ot->srna,
-      data->export_properties);
+      &collection->id, ot->srna, data->export_properties);
   wmOperator *op = minimal_operator_create(ot, &properties);
   block_set_active_operator(panel.header->block(), op, true);
 
@@ -597,13 +561,9 @@ void template_collection_exporters(Layout *layout, bContext *C)
   layout->block()->panel->runtime->layout_panel_states_storage = &data->layout_panel_states;
   if (panel.body) {
     draw_export_properties(
-        C,
-        *panel.body,
-        exporter_ptr,
-        op,
-        fh->get_default_filename(collection->id.name + 2));
+        C, *panel.body, exporter_ptr, op, fh->get_default_filename(collection->id.name + 2));
   }
   layout->block()->panel->runtime->layout_panel_states_storage = prev_layout_panel_states_storage;
 }
 
-} // namespace blender::ui
+}  // namespace blender::ui

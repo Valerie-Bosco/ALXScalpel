@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-
+from bpy.types import Header, Panel
+from rna_prop_ui import PropertyPanel
 from bl_ui import anim
 from bpy.app.translations import (
     pgettext_iface as iface_,
 )
-from bpy.types import Header, Panel
-from rna_prop_ui import PropertyPanel
+
 
 tabs_attr_infos = (
     ("show_properties_tool", "Tool", 'TOOL_SETTINGS'),
@@ -49,6 +49,8 @@ class PROPERTIES_HT_header(Header):
 
         layout.template_header()
 
+        layout.separator_spacer()
+
         if self._search_poll(context.space_data):
             # The following is an ugly attempt to make the search button center-align better visually.
             # A dummy icon is inserted that has to be scaled as the available width changes.
@@ -60,6 +62,8 @@ class PROPERTIES_HT_header(Header):
                 row.label(icon='BLANK1')
 
             layout.prop(view, "search_filter", icon='VIEWZOOM', text="")
+
+        layout.separator_spacer()
 
         layout.popover(panel="PROPERTIES_PT_options", text="")
 
@@ -197,6 +201,5 @@ classes = (
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
-
     for cls in classes:
         register_class(cls)

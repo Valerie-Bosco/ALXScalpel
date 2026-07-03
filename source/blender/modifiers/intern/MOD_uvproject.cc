@@ -279,10 +279,10 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
   return mesh;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result;
-  UVProjectModifierData *umd = reinterpret_cast<UVProjectModifierData *>(modifier_data);
+  UVProjectModifierData *umd = reinterpret_cast<UVProjectModifierData *>(md);
 
   result = uvprojectModifier_do(umd, ctx, ctx->object, mesh);
 

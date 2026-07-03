@@ -51,7 +51,7 @@ void popup_translate(ARegion *region, const int mdiff[2])
   ED_region_tag_redraw(region);
 
   /* update blocks */
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     PopupBlockHandle *handle = block.handle;
     /* Make empty, will be initialized on next use, see #60608. */
     BLI_rctf_init(&handle->prev_block_rect, 0, 0, 0, 0);
@@ -270,7 +270,8 @@ static void popup_block_position(wmWindow *window, ARegion *butregion, Button *b
     offset_y = (butrct.ymax - block->rect.ymin) - offset_overlap;
 
     if (but->type == ButtonType::Color &&
-        block->rect.ymax + offset_y > win_size[1] - UI_POPUP_MENU_TOP) {
+        block->rect.ymax + offset_y > win_size[1] - UI_POPUP_MENU_TOP)
+    {
       /* Shift this down, aligning the top edge close to the window top. */
       offset_y = win_size[1] - block->rect.ymax - UI_POPUP_MENU_TOP;
       /* All four corners should be rounded since this no longer button-aligned. */
@@ -397,7 +398,7 @@ static void popup_block_position(wmWindow *window, ARegion *butregion, Button *b
   SafetyRect *saferct = MEM_new<SafetyRect>(__func__);
   saferct->parent = butrct;
   saferct->safety = block->safety;
-  BLI_freelistN(&block->saferct);
+  block->saferct.free_no_destruct();
   BLI_duplicatelist(&block->saferct, &but->block->saferct);
   BLI_addhead(&block->saferct, saferct);
 }
@@ -420,7 +421,7 @@ static void block_region_refresh(const bContext *C, ARegion *region)
     ARegion *handle_ctx_region;
 
     region->runtime->do_draw &= ~RGN_REFRESH_UI;
-    for (Block &block : region->runtime->blocks.items_mutable()) {
+    for (Block &block : region->runtime->uiblocks.items_mutable()) {
       PopupBlockHandle *handle = block.handle;
 
       if (handle->can_refresh) {
@@ -447,7 +448,7 @@ static void block_region_refresh(const bContext *C, ARegion *region)
 
 static void block_region_draw(const bContext *C, ARegion *region)
 {
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     block_draw(C, &block);
   }
 }
@@ -477,7 +478,7 @@ static void block_region_popup_window_listener(const wmRegionListenerParams *par
 static void popup_block_clip(wmWindow *window, Block *block)
 {
   const float xmin_orig = block->rect.xmin;
-  constexpr int margin = UI_SCREEN_MARGIN;
+  const int margin = UI_SCREEN_MARGIN;
 
   if (block->flag & BLOCK_NO_WIN_CLIP) {
     return;
@@ -582,7 +583,7 @@ static void popup_block_remove(bContext *C, PopupBlockHandle *handle)
   CTX_wm_region_set(C, ctx_region);
 
   /* reset to region cursor (only if there's not another menu open) */
-  if (BLI_listbase_is_empty(&screen->regionbase)) {
+  if (screen->regionbase.is_empty()) {
     win->tag_cursor_refresh = true;
   }
 
@@ -625,10 +626,7 @@ struct PopupLayoutPanelStates {
   std::string idname;
   ListBaseT<LayoutPanelState> states = {};
 
-  PopupLayoutPanelStates(StringRef idname)
-    : idname{idname}
-  {
-  }
+  PopupLayoutPanelStates(StringRef idname) : idname{idname} {}
 
   ~PopupLayoutPanelStates()
   {
@@ -686,7 +684,7 @@ Block *popup_block_refresh(bContext *C, PopupBlockHandle *handle, ARegion *butre
   const BlockHandleCreateFunc handle_create_func = handle->popup_create_vars.handle_create_func;
   void *arg = handle->popup_create_vars.arg;
 
-  auto block_old = static_cast<Block *>(region->runtime->blocks.first);
+  Block *block_old = static_cast<Block *>(region->runtime->uiblocks.first);
 
   handle->refresh = (block_old != nullptr);
 
@@ -779,7 +777,7 @@ Block *popup_block_refresh(bContext *C, PopupBlockHandle *handle, ARegion *butre
   }
 
   if (block->flag & BLOCK_PIE_MENU) {
-    constexpr int win_width = UI_SCREEN_MARGIN;
+    const int win_width = UI_SCREEN_MARGIN;
 
     const int2 win_size = WM_window_native_pixel_size(window);
 
@@ -1023,7 +1021,7 @@ void popup_block_free(bContext *C, PopupBlockHandle *handle)
    * then close the popover too. We could extend this to other popup types too. */
   ARegion *region = handle->popup_create_vars.butregion;
   if (region != nullptr) {
-    for (Block &block : region->runtime->blocks) {
+    for (Block &block : region->runtime->uiblocks) {
       if (block.handle && (block.flag & BLOCK_POPOVER) && (block.flag & BLOCK_KEEP_OPEN) == 0) {
         PopupBlockHandle *menu = block.handle;
         menu->menuretval = RETURN_OK;
@@ -1064,9 +1062,9 @@ struct AlertData {
 
 static void alert_ok_cb(bContext *C, void *arg1, void *arg2)
 {
-  auto data = static_cast<AlertData *>(arg1);
+  AlertData *data = static_cast<AlertData *>(arg1);
   MEM_delete(data);
-  auto block = static_cast<Block *>(arg2);
+  Block *block = static_cast<Block *>(arg2);
   popup_menu_retval_set(block, RETURN_OK, true);
   wmWindow *win = CTX_wm_window(C);
   popup_block_close(C, win, block);
@@ -1074,24 +1072,24 @@ static void alert_ok_cb(bContext *C, void *arg1, void *arg2)
 
 static void alert_ok(bContext * /*C*/, void *arg, int /*retval*/)
 {
-  auto data = static_cast<AlertData *>(arg);
+  AlertData *data = static_cast<AlertData *>(arg);
   MEM_delete(data);
 }
 
 static void alert_cancel(bContext * /*C*/, void *user_data)
 {
-  auto data = static_cast<AlertData *>(user_data);
+  AlertData *data = static_cast<AlertData *>(user_data);
   MEM_delete(data);
 }
 
 static Block *alert_create(bContext *C, ARegion *region, void *user_data)
 {
-  auto data = static_cast<AlertData *>(user_data);
+  AlertData *data = static_cast<AlertData *>(user_data);
 
   const uiStyle *style = style_get_dpi();
   const short icon_size = (data->compact ? 32 : 40) * UI_SCALE_FAC;
-  const int max_width = static_cast<int>((data->compact ? 250.0f : 350.0f) * UI_SCALE_FAC);
-  const int min_width = static_cast<int>(120.0f * UI_SCALE_FAC);
+  const int max_width = int((data->compact ? 250.0f : 350.0f) * UI_SCALE_FAC);
+  const int min_width = int(120.0f * UI_SCALE_FAC);
 
   Block *block = block_begin(C, region, __func__, EmbossType::Emboss);
   block_theme_style_set(block, BLOCK_THEME_STYLE_POPUP);
@@ -1104,27 +1102,22 @@ static Block *alert_create(bContext *C, ARegion *region, void *user_data)
     block_flag_enable(block, BLOCK_MOVEMOUSE_QUIT);
   }
 
-  auto fstyle = UI_FSTYLE_WIDGET;
+  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
 
   fontstyle_set(&style->widget);
   /* Width based on the text lengths. */
   int text_width = BLF_width(style->widget.uifont_id, data->title.c_str(), data->title.size());
 
   Vector<StringRef> messages = BLF_string_wrap(
-      fstyle->uifont_id,
-      data->message,
-      max_width,
-      BLFWrapMode::Typographical);
+      fstyle->uifont_id, data->message, max_width, BLFWrapMode::Typographical);
 
   for (auto &st_ref : messages) {
     const std::string &st = st_ref;
     text_width = std::max(text_width,
-                          static_cast<int>(BLF_width(style->widget.uifont_id,
-                                                     st.c_str(),
-                                                     st.size())));
+                          int(BLF_width(style->widget.uifont_id, st.c_str(), st.size())));
   }
 
-  int dialog_width = std::max(text_width + static_cast<int>(style->columnspace * 2.5), min_width);
+  int dialog_width = std::max(text_width + int(style->columnspace * 2.5), min_width);
 
   Layout &layout = *uiItemsAlertBox(block, style, dialog_width + icon_size, data->icon, icon_size);
 
@@ -1148,9 +1141,8 @@ static Block *alert_create(bContext *C, ARegion *region, void *user_data)
     /* Clear so the OK button is left alone. */
     block_func_set(block, nullptr, nullptr, nullptr);
 
-    const float pad = std::max(
-        (1.0f - ((200.0f * UI_SCALE_FAC) / static_cast<float>(text_width))) / 2.0f,
-        0.01f);
+    const float pad = std::max((1.0f - ((200.0f * UI_SCALE_FAC) / float(text_width))) / 2.0f,
+                               0.01f);
     Layout &split = layout.split(pad, true);
     split.column(true);
     Layout &buttons = split.split(1.0f - (pad * 2.0f), true);
@@ -1158,17 +1150,7 @@ static Block *alert_create(bContext *C, ARegion *region, void *user_data)
 
     Block *buttons_block = layout.block();
     Button *okay_but = uiDefBut(
-        buttons_block,
-        ButtonType::But,
-        "OK",
-        0,
-        0,
-        0,
-        UI_UNIT_Y,
-        nullptr,
-        0,
-        0,
-        "");
+        buttons_block, ButtonType::But, "OK", 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, "");
     button_func_set(okay_but, alert_ok_cb, user_data, block);
     button_flag_enable(okay_but, BUT_ACTIVE_DEFAULT);
   }
@@ -1176,10 +1158,10 @@ static Block *alert_create(bContext *C, ARegion *region, void *user_data)
   const int padding = (data->compact ? 10 : 14) * UI_SCALE_FAC;
 
   if (data->mouse_move_quit) {
-    constexpr float button_center_x = -0.5f;
+    const float button_center_x = -0.5f;
     const float button_center_y = data->okay_button ? 4.0f : 2.0f;
-    const int bounds_offset[2] = {static_cast<int>(button_center_x * layout.width()),
-                                  static_cast<int>(button_center_y * UI_UNIT_X)};
+    const int bounds_offset[2] = {int(button_center_x * layout.width()),
+                                  int(button_center_y * UI_UNIT_X)};
     block_bounds_set_popup(block, padding, bounds_offset);
   }
   else {
@@ -1208,4 +1190,4 @@ void alert(bContext *C,
 
 /** \} */
 
-} // namespace blender::ui
+}  // namespace blender::ui

@@ -49,12 +49,12 @@ bool button_is_editable(const Button *but)
 
 bool button_is_editable_as_text(const Button *but)
 {
-  return ELEM(
-      but->type,
-      ButtonType::Text,
-      ButtonType::Num,
-      ButtonType::NumSlider,
-      ButtonType::SearchMenu);
+  return ELEM(but->type,
+              ButtonType::TextBox,
+              ButtonType::Text,
+              ButtonType::Num,
+              ButtonType::NumSlider,
+              ButtonType::SearchMenu);
 }
 
 bool button_is_toggle(const Button *but)
@@ -78,7 +78,8 @@ bool button_is_interactive_ex(const Button *but, const bool labeledit, const boo
       /* It's important labels are considered interactive for the purpose of showing tooltip. */
       if (!button_drag_is_draggable(but) && but->tip_func == nullptr &&
           but->tip_custom_func == nullptr && but->tip_quick_func == nullptr &&
-          (but->tip == nullptr || but->tip[0] == '\0')) {
+          (but->tip == nullptr || but->tip[0] == '\0'))
+      {
         return false;
       }
     }
@@ -93,7 +94,8 @@ bool button_is_interactive_ex(const Button *but, const bool labeledit, const boo
            ButtonType::Roundbox,
            ButtonType::Sepr,
            ButtonType::SeprLine,
-           ButtonType::ListBox)) {
+           ButtonType::ListBox))
+  {
     return false;
   }
   if (but->flag & UI_HIDDEN) {
@@ -103,7 +105,8 @@ bool button_is_interactive_ex(const Button *but, const bool labeledit, const boo
     return false;
   }
   if ((but->type == ButtonType::Text) &&
-      ELEM(but->emboss, EmbossType::None, EmbossType::NoneOrStatus) && !labeledit) {
+      ELEM(but->emboss, EmbossType::None, EmbossType::NoneOrStatus) && !labeledit)
+  {
     return false;
   }
   if ((but->type == ButtonType::ListRow) && labeledit) {
@@ -143,7 +146,6 @@ bool button_has_array_value(const Button *but)
 }
 
 static wmOperatorType *g_ot_tool_set_by_id = nullptr;
-
 bool but_is_tool(const Button *but)
 {
   /* very evil! */
@@ -195,7 +197,7 @@ void button_pie_dir(RadialDirection dir, float vec[2])
 
   BLI_assert(dir != UI_RADIAL_NONE);
 
-  angle = DEG2RADF(static_cast<float>(radial_dir_to_angle[dir]));
+  angle = DEG2RADF(float(radial_dir_to_angle[dir]));
   vec[0] = cosf(angle);
   vec[1] = sinf(angle);
 }
@@ -207,12 +209,12 @@ static bool but_isect_pie_seg(const Block *block, const Button *but)
   }
 
   /* Plus/minus 45 degrees: `cosf(DEG2RADF(45)) == M_SQRT1_2`. */
-  constexpr float angle_4th_cos = M_SQRT1_2;
+  const float angle_4th_cos = M_SQRT1_2;
   /* Plus/minus 22.5 degrees: `cosf(DEG2RADF(22.5))`. */
-  constexpr float angle_8th_cos = 0.9238795f;
+  const float angle_8th_cos = 0.9238795f;
 
   /* Use a large bias so edge-cases fall back to comparing with the adjacent direction. */
-  constexpr float eps_bias = 1e-4;
+  const float eps_bias = 1e-4;
 
   float but_dir[2];
   button_pie_dir(but->pie_dir, but_dir);
@@ -238,8 +240,7 @@ static bool but_isect_pie_seg(const Block *block, const Button *but)
     dir_adjacent_4th = UI_RADIAL_DIRECTION_NEXT(dir_adjacent_8th);
   }
 
-  const bool has_8th_adjacent = block->pie_data->pie_dir_mask & (
-                                  1 << static_cast<int>(dir_adjacent_8th));
+  const bool has_8th_adjacent = block->pie_data->pie_dir_mask & (1 << int(dir_adjacent_8th));
 
   /* Compare with the adjacent direction (even if there is no button). */
   const RadialDirection dir_adjacent = has_8th_adjacent ? dir_adjacent_8th : dir_adjacent_4th;
@@ -315,7 +316,7 @@ static Button *but_find(const ARegion *region,
                         const ButtonFindPollFn find_poll,
                         const void *find_custom_data)
 {
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     for (Button &but : block.buttons() | std::views::reverse) {
       if (find_poll && find_poll(&but, find_custom_data) == false) {
         continue;
@@ -339,12 +340,13 @@ Button *button_find_mouse_over_ex(const ARegion *region,
   if (!region_contains_point_px(region, xy)) {
     return nullptr;
   }
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     float mx = xy[0], my = xy[1];
     window_to_block_fl(region, &block, &mx, &my);
     /* Skip when the mouse is hovering auto-scroll handlers. */
     if ((block.flag & BLOCK_CLIPTOP && block.rect.ymax - UI_MENU_SCROLL_MOUSE < my) ||
-        (block.flag & BLOCK_CLIPBOTTOM && block.rect.ymin + UI_MENU_SCROLL_MOUSE > my)) {
+        (block.flag & BLOCK_CLIPBOTTOM && block.rect.ymin + UI_MENU_SCROLL_MOUSE > my))
+    {
       continue;
     }
     for (Button &but : block.buttons() | std::views::reverse) {
@@ -380,12 +382,7 @@ Button *button_find_mouse_over_ex(const ARegion *region,
 Button *but_find_mouse_over(const ARegion *region, const wmEvent *event)
 {
   return button_find_mouse_over_ex(
-      region,
-      event->xy,
-      event->modifier & KM_CTRL,
-      false,
-      nullptr,
-      nullptr);
+      region, event->xy, event->modifier & KM_CTRL, false, nullptr, nullptr);
 }
 
 Button *button_find_rect_over(const ARegion *region, const rcti *rect_px)
@@ -395,12 +392,12 @@ Button *button_find_rect_over(const ARegion *region, const rcti *rect_px)
   }
 
   /* Currently no need to expose this at the moment. */
-  constexpr bool labeledit = true;
+  const bool labeledit = true;
   rctf rect_px_fl;
   BLI_rctf_rcti_copy(&rect_px_fl, rect_px);
   Button *butover = nullptr;
 
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     rctf rect_block;
     window_to_block_rctf(region, &block, &rect_block, &rect_px_fl);
 
@@ -431,7 +428,7 @@ Button *listbox_find_mouse_over_ex(const ARegion *region, const int xy[2])
   if (!region_contains_point_px(region, xy)) {
     return nullptr;
   }
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     float mx = xy[0], my = xy[1];
     window_to_block_fl(region, &block, &mx, &my);
     for (Button &but : block.buttons() | std::views::reverse) {
@@ -488,7 +485,7 @@ struct ListRowFindIndexData {
 
 static bool but_is_listrow_at_index(const Button *but, const void *customdata)
 {
-  auto find_data = static_cast<const ListRowFindIndexData *>(customdata);
+  const ListRowFindIndexData *find_data = static_cast<const ListRowFindIndexData *>(customdata);
 
   return but_is_listrow(but, nullptr) && listbox_contains_listrow(find_data->listbox, but) &&
          (but->hardmax == find_data->index);
@@ -513,19 +510,20 @@ Button *view_item_find_mouse_over(const ARegion *region, const int xy[2])
   return button_find_mouse_over_ex(region, xy, false, false, but_is_view_item_fn, nullptr);
 }
 
-static bool but_is_active_view_item(const Button *but, const void * /*customdata*/)
+static bool but_is_active_view_item(const Button *but, const void *view)
 {
   if (but->type != ButtonType::ViewItem) {
     return false;
   }
 
   const auto *view_item_but = static_cast<const ButtonViewItem *>(but);
-  return view_item_but->view_item->is_active();
+  return (!view || &view_item_but->view_item->get_view() == view) &&
+         view_item_but->view_item->is_active();
 }
 
-Button *view_item_find_active(const ARegion *region)
+Button *view_item_find_active(const ARegion *region, const AbstractView *view)
 {
-  return but_find(region, but_is_active_view_item, nullptr);
+  return but_find(region, but_is_active_view_item, view);
 }
 
 Button *view_item_find_search_highlight(const ARegion *region)
@@ -552,8 +550,8 @@ Button *view_item_find_search_highlight(const ARegion *region)
 Button *button_prev(Button *but)
 {
   for (Button &button :
-       but->block->buttons() | std::views::take(but->block->but_index(but)) |
-       std::views::reverse) {
+       but->block->buttons() | std::views::take(but->block->but_index(but)) | std::views::reverse)
+  {
     if (button_is_editable(&button)) {
       return &button;
     }
@@ -601,7 +599,8 @@ bool button_is_cursor_warp(const Button *but)
              ButtonType::HsvCube,
              ButtonType::HsvCircle,
              ButtonType::Curve,
-             ButtonType::CurveProfile)) {
+             ButtonType::CurveProfile))
+    {
       return true;
     }
   }
@@ -751,7 +750,7 @@ Block *block_find_mouse_over_ex(const ARegion *region, const int xy[2], bool onl
   if (!region_contains_point_px(region, xy)) {
     return nullptr;
   }
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     if (only_clip) {
       if ((block.flag & BLOCK_CLIP_EVENTS) == 0) {
         continue;
@@ -779,7 +778,7 @@ Block *block_find_mouse_over(const ARegion *region, const wmEvent *event, bool o
 
 Button *region_find_active_but(ARegion *region)
 {
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     Button *but = block_active_but_get(&block);
     if (but) {
       return but;
@@ -791,7 +790,7 @@ Button *region_find_active_but(ARegion *region)
 
 Button *region_find_first_but_test_flag(ARegion *region, int flag_include, int flag_exclude)
 {
-  for (Block &block : region->runtime->blocks) {
+  for (Block &block : region->runtime->uiblocks) {
     for (Button &but : block.buttons()) {
       if (((but.flag & flag_include) == flag_include) && ((but.flag & flag_exclude) == 0)) {
         return &but;
@@ -827,7 +826,8 @@ bool region_contains_point_px(const ARegion *region, const int xy[2])
 
     window_to_region(region, &mx, &my);
     if (!BLI_rcti_isect_pt(&v2d->mask, mx, my) ||
-        view2d_mouse_in_scrollers(region, &region->v2d, xy)) {
+        view2d_mouse_in_scrollers(region, &region->v2d, xy))
+    {
       return false;
     }
   }
@@ -849,7 +849,8 @@ bool region_contains_rect_px(const ARegion *region, const rcti *rect_px)
     rcti rect_region;
     window_to_region_rcti(region, &rect_region, rect_px);
     if (!BLI_rcti_isect(&v2d->mask, &rect_region, nullptr) ||
-        view2d_rect_in_scrollers(region, &region->v2d, rect_px)) {
+        view2d_rect_in_scrollers(region, &region->v2d, rect_px))
+    {
       return false;
     }
   }
@@ -901,4 +902,4 @@ bool button_opens_link(const Button *button)
          STR_ELEM(button->optype->idname, "WM_OT_url_open", "WM_OT_url_open_preset");
 }
 
-} // namespace blender::ui
+}  // namespace blender::ui

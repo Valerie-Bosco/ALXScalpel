@@ -454,9 +454,9 @@ static void wn_face_with_angle(WeightedNormalModifierData *wnmd, WeightedNormalD
   apply_weights_vertex_normal(wnmd, wn_data);
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  WeightedNormalModifierData *wnmd = reinterpret_cast<WeightedNormalModifierData *>(modifier_data);
+  WeightedNormalModifierData *wnmd = reinterpret_cast<WeightedNormalModifierData *>(md);
 
   Mesh *result;
   result = id_cast<Mesh *>(BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE));

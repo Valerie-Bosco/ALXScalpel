@@ -108,7 +108,7 @@ void template_uilist_flags(Layout *layout, const bContext *C, PointerRNA *filept
   Layout *col = &row.column(true);
 
   template_uilist(col,
-                  C,
+                  const_cast<bContext *>(C),
                   "UI_UL_cache_file_layers",
                   "cache_file_layers",
                   fileptr,
@@ -118,15 +118,15 @@ void template_uilist_flags(Layout *layout, const bContext *C, PointerRNA *filept
                   "",
                   1,
                   5,
-                  UILIST_LAYOUT_DEFAULT,
+                  UILST_LAYOUT_DEFAULT,
                   TEMPLATE_LIST_FLAG_NONE);
 
   col = &row.column(true);
   col->op("cachefile.layer_add", "", ICON_ADD);
   col->op("cachefile.layer_remove", "", ICON_REMOVE);
 
-  auto file = static_cast<CacheFile *>(fileptr->data);
-  if (BLI_listbase_count(&file->layers) > 1) {
+  CacheFile *file = static_cast<CacheFile *>(fileptr->data);
+  if (file->layers.count() > 1) {
     col->separator(1.0f);
     col->op("cachefile.layer_move", "", ICON_TRIA_UP);
     col->op("cachefile.layer_move", "", ICON_TRIA_DOWN);
@@ -173,7 +173,7 @@ void template_cache_file(Layout *layout,
     return;
   }
 
-  auto file = static_cast<CacheFile *>(fileptr.data);
+  CacheFile *file = static_cast<CacheFile *>(fileptr.data);
 
   layout->context_ptr_set("edit_cachefile", &fileptr);
 
@@ -206,4 +206,4 @@ void template_cache_file(Layout *layout,
 #endif
 }
 
-} // namespace blender::ui
+}  // namespace blender::ui

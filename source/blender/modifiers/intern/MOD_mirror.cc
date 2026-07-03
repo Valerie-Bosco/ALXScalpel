@@ -30,50 +30,43 @@
 
 #include "MOD_ui_common.hh"
 
-#include "GEO_mesh_merge_by_distance.hh"
+#include "GEO_mesh_merge_verts.hh"
 
 namespace blender {
 
 static void init_data(ModifierData *md)
 {
-  auto mmd = reinterpret_cast<MirrorModifierData *>(md);
+  MirrorModifierData *mmd = reinterpret_cast<MirrorModifierData *>(md);
   INIT_DEFAULT_STRUCT_AFTER(mmd, modifier);
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
-  auto mmd = reinterpret_cast<MirrorModifierData *>(md);
+  MirrorModifierData *mmd = reinterpret_cast<MirrorModifierData *>(md);
 
   walk(user_data, ob, reinterpret_cast<ID **>(&mmd->mirror_ob), IDWALK_CB_NOP);
 }
 
 static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  auto mmd = reinterpret_cast<MirrorModifierData *>(md);
+  MirrorModifierData *mmd = reinterpret_cast<MirrorModifierData *>(md);
   if (mmd->mirror_ob != nullptr) {
     DEG_add_object_relation(ctx->node, mmd->mirror_ob, DEG_OB_COMP_TRANSFORM, "Mirror Modifier");
     DEG_add_depends_on_transform_relation(ctx->node, "Mirror Modifier");
   }
 }
 
-static Mesh *mirror_apply_on_axis(
-    MirrorModifierData *mmd,
-    Object *ob,
-    Mesh *mesh,
-    const int axis,
-    const bool use_correct_order_on_merge)
+static Mesh *mirror_apply_on_axis(MirrorModifierData *mmd,
+                                  Object *ob,
+                                  Mesh *mesh,
+                                  const int axis,
+                                  const bool use_correct_order_on_merge)
 {
   int *vert_merge_map = nullptr;
   int vert_merge_map_len;
   Mesh *result = mesh;
   result = BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(
-      mmd,
-      ob,
-      result,
-      axis,
-      use_correct_order_on_merge,
-      &vert_merge_map,
-      &vert_merge_map_len);
+      mmd, ob, result, axis, use_correct_order_on_merge, &vert_merge_map, &vert_merge_map_len);
 
   if (vert_merge_map) {
     /* Slow - so only call if one or more merge verts are found,
@@ -84,10 +77,7 @@ static Mesh *mirror_apply_on_axis(
     if (vert_merge_map_len) {
       Mesh *tmp = result;
       result = geometry::mesh_merge_verts(
-          *tmp,
-          MutableSpan<int>{vert_merge_map, result->verts_num},
-          vert_merge_map_len,
-          false);
+          *tmp, MutableSpan<int>{vert_merge_map, result->verts_num}, vert_merge_map_len, false);
       BKE_id_free(nullptr, tmp);
     }
     MEM_delete(vert_merge_map);
@@ -96,43 +86,26 @@ static Mesh *mirror_apply_on_axis(
   return result;
 }
 
-static Mesh *mirrorModifier__doMirror(MirrorModifierData *mirror_modifier_data,
-                                      Object *object,
-                                      Mesh *mesh)
+static Mesh *mirrorModifier__doMirror(MirrorModifierData *mmd, Object *ob, Mesh *mesh)
 {
   Mesh *result = mesh;
-  const bool use_correct_order_on_merge = mirror_modifier_data->use_correct_order_on_merge;
+  const bool use_correct_order_on_merge = mmd->use_correct_order_on_merge;
 
   /* check which axes have been toggled and mirror accordingly */
-  if (mirror_modifier_data->flag & MOD_MIR_AXIS_X) {
-    result = mirror_apply_on_axis(
-        mirror_modifier_data,
-        object,
-        result,
-        0,
-        use_correct_order_on_merge);
+  if (mmd->flag & MOD_MIR_AXIS_X) {
+    result = mirror_apply_on_axis(mmd, ob, result, 0, use_correct_order_on_merge);
   }
-  if (mirror_modifier_data->flag & MOD_MIR_AXIS_Y) {
+  if (mmd->flag & MOD_MIR_AXIS_Y) {
     Mesh *tmp = result;
-    result = mirror_apply_on_axis(
-        mirror_modifier_data,
-        object,
-        result,
-        1,
-        use_correct_order_on_merge);
+    result = mirror_apply_on_axis(mmd, ob, result, 1, use_correct_order_on_merge);
     if (tmp != mesh) {
       /* free intermediate results */
       BKE_id_free(nullptr, tmp);
     }
   }
-  if (mirror_modifier_data->flag & MOD_MIR_AXIS_Z) {
+  if (mmd->flag & MOD_MIR_AXIS_Z) {
     Mesh *tmp = result;
-    result = mirror_apply_on_axis(
-        mirror_modifier_data,
-        object,
-        result,
-        2,
-        use_correct_order_on_merge);
+    result = mirror_apply_on_axis(mmd, ob, result, 2, use_correct_order_on_merge);
     if (tmp != mesh) {
       /* free intermediate results */
       BKE_id_free(nullptr, tmp);
@@ -142,10 +115,10 @@ static Mesh *mirrorModifier__doMirror(MirrorModifierData *mirror_modifier_data,
   return result;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
   Mesh *result;
-  auto mmd = reinterpret_cast<MirrorModifierData *>(modifier_data);
+  MirrorModifierData *mmd = reinterpret_cast<MirrorModifierData *>(md);
 
   result = mirrorModifier__doMirror(mmd, ctx->object, mesh);
 
@@ -156,12 +129,12 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   ui::Layout *row, *sub;
   ui::Layout &layout = *panel->layout;
-  constexpr ui::eUI_Item_Flag toggles_flag = ui::ITEM_R_TOGGLE | ui::ITEM_R_FORCE_BLANK_DECORATE;
+  const ui::eUI_Item_Flag toggles_flag = ui::ITEM_R_TOGGLE | ui::ITEM_R_FORCE_BLANK_DECORATE;
 
   PropertyRNA *prop;
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
-  auto mmd = static_cast<MirrorModifierData *>(ptr->data);
+  MirrorModifierData *mmd = static_cast<MirrorModifierData *>(ptr->data);
   bool has_bisect = (mmd->flag &
                      (MOD_MIR_BISECT_AXIS_X | MOD_MIR_BISECT_AXIS_Y | MOD_MIR_BISECT_AXIS_Z));
 
@@ -192,11 +165,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   col.prop(ptr, "mirror_object", UI_ITEM_NONE, std::nullopt, ICON_NONE);
 
   col.prop(
-      ptr,
-      "use_clip",
-      UI_ITEM_NONE,
-      CTX_IFACE_(BLT_I18NCONTEXT_ID_MESH, "Clipping"),
-      ICON_NONE);
+      ptr, "use_clip", UI_ITEM_NONE, CTX_IFACE_(BLT_I18NCONTEXT_ID_MESH, "Clipping"), ICON_NONE);
 
   row = &col.row(true, IFACE_("Merge"));
   row->prop(ptr, "use_mirror_merge", UI_ITEM_NONE, "", ICON_NONE);
@@ -255,40 +224,40 @@ static void panel_register(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_Mirror = {
     /*idname*/ "Mirror",
-               /*name*/ N_("Mirror"),
-               /*struct_name*/ "MirrorModifierData",
-               /*struct_size*/ sizeof(MirrorModifierData),
-               /*srna*/ &RNA_MirrorModifier,
-               /*type*/ ModifierTypeType::Constructive,
-               /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
-                         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_EnableInEditmode |
-                         eModifierTypeFlag_AcceptsCVs,
-               /*icon*/ ICON_MOD_MIRROR,
+    /*name*/ N_("Mirror"),
+    /*struct_name*/ "MirrorModifierData",
+    /*struct_size*/ sizeof(MirrorModifierData),
+    /*srna*/ &RNA_MirrorModifier,
+    /*type*/ ModifierTypeType::Constructive,
+    /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
+        eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_EnableInEditmode |
+        eModifierTypeFlag_AcceptsCVs,
+    /*icon*/ ICON_MOD_MIRROR,
 
-               /*copy_data*/ BKE_modifier_copydata_generic,
+    /*copy_data*/ BKE_modifier_copydata_generic,
 
-               /*deform_verts*/ nullptr,
-               /*deform_matrices*/ nullptr,
-               /*deform_verts_EM*/ nullptr,
-               /*deform_matrices_EM*/ nullptr,
-               /*modify_mesh*/ modify_mesh,
-               /*modify_geometry_set*/ nullptr,
+    /*deform_verts*/ nullptr,
+    /*deform_matrices*/ nullptr,
+    /*deform_verts_EM*/ nullptr,
+    /*deform_matrices_EM*/ nullptr,
+    /*modify_mesh*/ modify_mesh,
+    /*modify_geometry_set*/ nullptr,
 
-               /*init_data*/ init_data,
-               /*required_data_mask*/ nullptr,
-               /*free_data*/ nullptr,
-               /*is_disabled*/ nullptr,
-               /*update_depsgraph*/ update_depsgraph,
-               /*depends_on_time*/ nullptr,
-               /*depends_on_normals*/ nullptr,
-               /*foreach_ID_link*/ foreach_ID_link,
-               /*foreach_tex_link*/ nullptr,
-               /*free_runtime_data*/ nullptr,
-               /*panel_register*/ panel_register,
-               /*blend_write*/ nullptr,
-               /*blend_read*/ nullptr,
-               /*foreach_cache*/ nullptr,
-               /*foreach_working_space_color*/ nullptr,
+    /*init_data*/ init_data,
+    /*required_data_mask*/ nullptr,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ update_depsgraph,
+    /*depends_on_time*/ nullptr,
+    /*depends_on_normals*/ nullptr,
+    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_tex_link*/ nullptr,
+    /*free_runtime_data*/ nullptr,
+    /*panel_register*/ panel_register,
+    /*blend_write*/ nullptr,
+    /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
+    /*foreach_working_space_color*/ nullptr,
 };
 
-} // namespace blender
+}  // namespace blender

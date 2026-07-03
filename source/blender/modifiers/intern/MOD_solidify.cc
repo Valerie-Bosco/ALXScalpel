@@ -53,14 +53,14 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   }
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  const SolidifyModifierData *smd = reinterpret_cast<SolidifyModifierData *>(modifier_data);
+  const SolidifyModifierData *smd = reinterpret_cast<SolidifyModifierData *>(md);
   switch (smd->mode) {
     case MOD_SOLIDIFY_MODE_EXTRUDE:
-      return MOD_solidify_extrude_modifyMesh(modifier_data, ctx, mesh);
+      return MOD_solidify_extrude_modifyMesh(md, ctx, mesh);
     case MOD_SOLIDIFY_MODE_NONMANIFOLD:
-      return MOD_solidify_nonmanifold_modifyMesh(modifier_data, ctx, mesh);
+      return MOD_solidify_nonmanifold_modifyMesh(md, ctx, mesh);
     default:
       BLI_assert_unreachable();
   }

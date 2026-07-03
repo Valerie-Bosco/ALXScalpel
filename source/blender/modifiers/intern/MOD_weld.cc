@@ -40,7 +40,7 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "GEO_mesh_merge_by_distance.hh"
+#include "GEO_mesh_merge_verts.hh"
 
 namespace blender {
 
@@ -107,9 +107,9 @@ static std::optional<Mesh *> calculate_weld(const Mesh &mesh, const WeldModifier
   return nullptr;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
 {
-  const WeldModifierData &wmd = reinterpret_cast<WeldModifierData &>(*modifier_data);
+  const WeldModifierData &wmd = reinterpret_cast<WeldModifierData &>(*md);
 
   std::optional<Mesh *> result = calculate_weld(*mesh, wmd);
   if (!result) {

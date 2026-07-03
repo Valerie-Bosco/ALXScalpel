@@ -218,10 +218,10 @@ static void modify_geometry_set(ModifierData *md,
 #endif
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
 #if defined(WITH_USD) || defined(WITH_ALEMBIC)
-  MeshSeqCacheModifierData *mcmd = reinterpret_cast<MeshSeqCacheModifierData *>(modifier_data);
+  MeshSeqCacheModifierData *mcmd = reinterpret_cast<MeshSeqCacheModifierData *>(md);
 
   /* Only used to check whether we are operating on org data or not... */
   Mesh *object_mesh = (ctx->object->type == OB_MESH) ? id_cast<Mesh *>(ctx->object->data) :
@@ -241,7 +241,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
     BKE_cachefile_reader_open(cache_file, &mcmd->reader, ctx->object, mcmd->object_path);
     if (!mcmd->reader) {
       BKE_modifier_set_error(
-          ctx->object, modifier_data, "Could not create reader for file %s", cache_file->filepath);
+          ctx->object, md, "Could not create reader for file %s", cache_file->filepath);
       return mesh;
     }
   }
@@ -278,7 +278,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
 
   bke::GeometrySet geometry_set = bke::GeometrySet::from_mesh(
       mesh, bke::GeometryOwnershipType::Editable);
-  modify_geometry_set(modifier_data, ctx, &geometry_set);
+  modify_geometry_set(md, ctx, &geometry_set);
   Mesh *result = geometry_set.get_component_for_write<bke::MeshComponent>().release();
 
   if (!ELEM(result, nullptr, mesh) && (mesh != org_mesh)) {
@@ -288,7 +288,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
 
   return result ? result : mesh;
 #else
-  UNUSED_VARS(ctx, modifier_data);
+  UNUSED_VARS(ctx, md);
   return mesh;
 #endif
 }

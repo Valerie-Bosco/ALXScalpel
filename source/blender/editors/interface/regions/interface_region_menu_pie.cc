@@ -53,7 +53,7 @@ struct PieMenu {
 static Block *block_func_PIE(bContext * /*C*/, PopupBlockHandle *handle, void *arg_pie)
 {
   Block *block;
-  auto pie = static_cast<PieMenu *>(arg_pie);
+  PieMenu *pie = static_cast<PieMenu *>(arg_pie);
   int minwidth;
 
   minwidth = UI_MENU_WIDTH_MIN;
@@ -61,7 +61,7 @@ static Block *block_func_PIE(bContext * /*C*/, PopupBlockHandle *handle, void *a
 
   /* in some cases we create the block before the region,
    * so we set it delayed here if necessary */
-  if (BLI_findindex(&handle->region->runtime->blocks, block) == -1) {
+  if (BLI_findindex(&handle->region->runtime->uiblocks, block) == -1) {
     block_region_set(block, handle->region);
   }
 
@@ -84,7 +84,7 @@ static Block *block_func_PIE(bContext * /*C*/, PopupBlockHandle *handle, void *a
 
 static float pie_menu_title_width(const char *name, int icon)
 {
-  auto fstyle = UI_FSTYLE_WIDGET;
+  const uiFontStyle *fstyle = UI_FSTYLE_WIDGET;
   return (fontstyle_string_width(fstyle, name) + (UI_UNIT_X * (1.50f + (icon ? 0.25f : 0.0f))));
 }
 
@@ -132,15 +132,7 @@ PieMenu *pie_menu_begin(bContext *C, const char *title, int icon, const wmEvent 
   }
 
   pie->layout = &block_layout(
-      pie->pie_block,
-      LayoutDirection::Vertical,
-      LayoutType::PieMenu,
-      0,
-      0,
-      200,
-      0,
-      0,
-      style);
+      pie->pie_block, LayoutDirection::Vertical, LayoutType::PieMenu, 0, 0, 200, 0, 0, style);
 
   /* NOTE: #wmEvent.xy is where we started dragging in case of #KM_PRESS_DRAG. */
   pie->mx = event->xy[0];
@@ -155,31 +147,12 @@ PieMenu *pie_menu_begin(bContext *C, const char *title, int icon, const wmEvent 
       SNPRINTF_UTF8(titlestr, " %s", title);
       w = pie_menu_title_width(titlestr, icon);
       but = uiDefIconTextBut(
-          pie->pie_block,
-          ButtonType::Label,
-          icon,
-          titlestr,
-          0,
-          0,
-          w,
-          UI_UNIT_Y,
-          nullptr,
-          "");
+          pie->pie_block, ButtonType::Label, icon, titlestr, 0, 0, w, UI_UNIT_Y, nullptr, "");
     }
     else {
       w = pie_menu_title_width(title, 0);
       but = uiDefBut(
-          pie->pie_block,
-          ButtonType::Label,
-          title,
-          0,
-          0,
-          w,
-          UI_UNIT_Y,
-          nullptr,
-          0.0,
-          0.0,
-          "");
+          pie->pie_block, ButtonType::Label, title, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
     }
     /* do not align left */
     but->drawflag &= ~BUT_TEXT_LEFT;
@@ -195,14 +168,7 @@ void pie_menu_end(bContext *C, PieMenu *pie)
   wmWindow *window = CTX_wm_window(C);
 
   PopupBlockHandle *menu = popup_block_create(
-      C,
-      nullptr,
-      nullptr,
-      nullptr,
-      block_func_PIE,
-      pie,
-      nullptr,
-      false);
+      C, nullptr, nullptr, nullptr, block_func_PIE, pie, nullptr, false);
   menu->popup = true;
   menu->towardstime = BLI_time_now_seconds();
 
@@ -232,10 +198,7 @@ wmOperatorStatus pie_menu_invoke(bContext *C, const char *idname, const wmEvent 
   }
 
   PieMenu *pie = pie_menu_begin(
-      C,
-      CTX_IFACE_(mt->translation_context, mt->label),
-      ICON_NONE,
-      event);
+      C, CTX_IFACE_(mt->translation_context, mt->label), ICON_NONE, event);
   Layout *layout = pie_menu_layout(pie);
 
   menutype_draw(C, mt, layout);
@@ -264,8 +227,8 @@ wmOperatorStatus pie_menu_invoke(bContext *C, const char *idname, const wmEvent 
 
 struct PieMenuLevelData {
   char title[UI_MAX_NAME_STR]; /* parent pie title, copied for level */
-  int icon; /* parent pie icon, copied for level */
-  int totitem; /* total count of *remaining* items */
+  int icon;                    /* parent pie icon, copied for level */
+  int totitem;                 /* total count of *remaining* items */
 
   /* needed for calling #Layout::operator_enum_items again for new level */
   wmOperatorType *ot;
@@ -280,8 +243,8 @@ struct PieMenuLevelData {
  */
 static void pie_menu_level_invoke(bContext *C, void *argN, void *arg2)
 {
-  auto item_array = static_cast<EnumPropertyItem *>(argN);
-  auto lvl = static_cast<PieMenuLevelData *>(arg2);
+  EnumPropertyItem *item_array = static_cast<EnumPropertyItem *>(argN);
+  PieMenuLevelData *lvl = static_cast<PieMenuLevelData *>(arg2);
   wmWindow *win = CTX_wm_window(C);
 
   PieMenu *pie = pie_menu_begin(C, IFACE_(lvl->title), lvl->icon, win->runtime->eventstate);
@@ -294,14 +257,7 @@ static void pie_menu_level_invoke(bContext *C, void *argN, void *arg2)
 
   if (prop) {
     layout.op_enum_items(
-        lvl->ot,
-        ptr,
-        prop,
-        lvl->properties,
-        lvl->context,
-        lvl->flag,
-        item_array,
-        lvl->totitem);
+        lvl->ot, ptr, prop, lvl->properties, lvl->context, lvl->flag, item_array, lvl->totitem);
   }
   else {
     RNA_warning("%s.%s not found", RNA_struct_identifier(ptr.type), lvl->propname.c_str());
@@ -319,13 +275,13 @@ void pie_menu_level_create(Block *block,
                            const wm::OpCallContext context,
                            const eUI_Item_Flag flag)
 {
-  constexpr int totitem_parent = PIE_MAX_ITEMS - 1;
+  const int totitem_parent = PIE_MAX_ITEMS - 1;
   const int totitem_remain = totitem - totitem_parent;
   const size_t array_size = sizeof(EnumPropertyItem) * totitem_remain;
 
   /* used as but->func_argN so freeing is handled elsewhere */
-  auto remaining = static_cast<EnumPropertyItem *>(
-    MEM_new_uninitialized(array_size + sizeof(EnumPropertyItem), "pie_level_item_array"));
+  EnumPropertyItem *remaining = static_cast<EnumPropertyItem *>(
+      MEM_new_uninitialized(array_size + sizeof(EnumPropertyItem), "pie_level_item_array"));
   memcpy(remaining, items + totitem_parent, array_size);
   /* A null terminating sentinel element is required. */
   memset(&remaining[totitem_remain], 0, sizeof(EnumPropertyItem));
@@ -356,4 +312,4 @@ void pie_menu_level_create(Block *block,
 
 /** \} */ /* Pie Menu Levels */
 
-} // namespace blender::ui
+}  // namespace blender::ui

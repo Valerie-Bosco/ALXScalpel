@@ -91,9 +91,9 @@ static Mesh *WireframeModifier_do(WireframeModifierData *wmd, Object *ob, Mesh *
   return result;
 }
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
-  return WireframeModifier_do(reinterpret_cast<WireframeModifierData *>(modifier_data), ctx->object, mesh);
+  return WireframeModifier_do(reinterpret_cast<WireframeModifierData *>(md), ctx->object, mesh);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)

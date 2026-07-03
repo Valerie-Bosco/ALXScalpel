@@ -44,7 +44,7 @@ static void init_data(ModifierData *md)
   fmd->domain = nullptr;
   fmd->flow = nullptr;
   fmd->effector = nullptr;
-  fmd->type = 0;
+  fmd->type = FluidModifierType{};
   fmd->time = -1;
 }
 
@@ -107,13 +107,13 @@ static void fluid_modifier_do_isolated(void *userdata)
 }
 #endif /* WITH_FLUID */
 
-static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext *ctx, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
 #ifndef WITH_FLUID
-  UNUSED_VARS(modifier_data, ctx);
+  UNUSED_VARS(md, ctx);
   return mesh;
 #else
-  FluidModifierData *fmd = (FluidModifierData *)modifier_data;
+  FluidModifierData *fmd = (FluidModifierData *)md;
 
   if (ctx->flag & MOD_APPLY_ORCO) {
     return mesh;
@@ -123,7 +123,7 @@ static Mesh *modify_mesh(ModifierData *modifier_data, const ModifierEvalContext 
    * because Mantaflow uses TBB to parallel its own computation which without isolation will start
    * stealing tasks from dependency graph. Stealing tasks from the dependency graph might cause
    * a recursive lock when Python drivers are used (because Mantaflow is interfaced via Python as
-   * well. */
+   * well). */
   FluidIsolationData isolation_data;
   isolation_data.depsgraph = ctx->depsgraph;
   isolation_data.object = ctx->object;
