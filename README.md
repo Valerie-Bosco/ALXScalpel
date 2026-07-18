@@ -4,6 +4,18 @@ linking to external resources instead of including content in-line.
 See 'release/text/readme.html' for the end user read-me.
 -->
 
+ALXScalpel
+=======
+[Tab] Pie Menu: new custom pie menu with automatic mode swapping
+- **Vertex/Edge/Face**
+- one-click | Smart Pose | <br>
+        ( automatically finds all the armatures directly in selected objects and gathers any connected armature from the mesh selection )
+- one-click | Smart Weight Paint | <br>
+        ( automatically finds the relevant armature for the active mesh and re-orders the selection to instantly enter in "posable weight paint" )
+
+-----
+
+
 Blender
 =======
 
