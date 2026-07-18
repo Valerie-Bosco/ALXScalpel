@@ -6411,6 +6411,11 @@ class ALX_OT_ObjectMode_SetToPaintTexture(bpy.types.Operator):
 
     target_paint_mode: bpy.props.StringProperty(default="VERTEX_PAINT", options={"HIDDEN"})
 
+
+    @classmethod
+    def poll(self, context):
+        return True
+
     def execute(self, context):
         if context.mode != "OBJECT":
             bpy.ops.object.mode_set(mode="OBJECT")
@@ -6434,6 +6439,8 @@ class VIEW3D_MT_object_mode_pie(Menu):
     def draw(self, context):
         menu_pie = self.layout.menu_pie()
 
+
+
         # OBJECT
         menu_pie.operator(ALX_OT_ObjectMode_SetToObject.bl_idname, text="OBJECT", icon="OBJECT_DATAMODE")
 
@@ -6451,6 +6458,7 @@ class VIEW3D_MT_object_mode_pie(Menu):
             if context.mode == "PAINT_WEIGHT":
                 menu_pie.box().label(text="[Mode] | [Weight Paint]")
 
+        # MESH EDIT
         edge_edit_mode_button = menu_pie.operator(
             ALX_OT_ObjectMode_SetToEditMesh.bl_idname, text="Edge", icon="EDGESEL"
         )
@@ -6466,81 +6474,92 @@ class VIEW3D_MT_object_mode_pie(Menu):
         )
         face_edit_mode_button.target_selection_mode = "FACE"
 
+
+        # GENERAL EDIT
         if len(context.selected_objects) != 0:
 
-            selection_bulk_edit_box: bpy.types.UILayout = menu_pie.box()
-            selection_bulk_edit_box.scale_x = 1.25
-            selection_bulk_edit_box.scale_y = 1.25
+            selection_bulk_edit_box: bpy.types.UILayout = menu_pie.box().grid_flow(row_major=True, columns=6, even_columns=True, even_rows=False, align=True)
+            selection_bulk_edit_box.scale_x = 1.15
+            selection_bulk_edit_box.scale_y = 1.15
 
-            generic_edit_row = selection_bulk_edit_box.row(align=True)
-            grease_pencil_texture_paint_row = selection_bulk_edit_box.split(factor=0.5)
 
-            sbe_armature = generic_edit_row.operator(
+            sbe_armature = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="ARMATURE_DATA"
             )
             sbe_armature.target_object_type = "ARMATURE"
             sbe_armature.target_selection_mode = ""
 
-            sbe_curve = generic_edit_row.operator(
+            sbe_curve = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="CURVE_DATA"
             )
             sbe_curve.target_object_type = "CURVE"
             sbe_armature.target_selection_mode = ""
 
-            sbe_surface = generic_edit_row.operator(
+            sbe_surface = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="SURFACE_DATA"
             )
             sbe_surface.target_object_type = "SURFACE"
             sbe_surface.target_selection_mode = ""
 
-            sbe_meta = generic_edit_row.operator(
+            sbe_meta = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="META_DATA"
             )
             sbe_meta.target_object_type = "META"
             sbe_meta.target_selection_mode = ""
 
-            sbe_text = generic_edit_row.operator(
+            sbe_text = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="FILE_FONT"
             )
             sbe_text.target_object_type = "FONT"
             sbe_text.target_selection_mode = ""
 
-            sbe_lattice = generic_edit_row.operator(
+            sbe_lattice = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="LATTICE_DATA"
             )
             sbe_lattice.target_object_type = "LATTICE"
             sbe_lattice.target_selection_mode = ""
 
-            grease_pencil_row = grease_pencil_texture_paint_row.split(factor=0.333, align=True)
-            sbe_gpencil_point = grease_pencil_row.operator(
+            selection_bulk_edit_box.separator()
+            selection_bulk_edit_box.separator()
+            selection_bulk_edit_box.separator()
+            selection_bulk_edit_box.separator()
+            selection_bulk_edit_box.separator()
+            selection_bulk_edit_box.separator()
+
+
+
+
+
+
+            sbe_gpencil_point = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="GP_SELECT_POINTS"
             )
             sbe_gpencil_point.target_object_type = "GPENCIL"
             sbe_gpencil_point.target_selection_mode = "POINT"
 
-            sbe_gpencil_stroke = grease_pencil_row.operator(
+            sbe_gpencil_stroke = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="GP_SELECT_STROKES"
             )
             sbe_gpencil_stroke.target_object_type = "GPENCIL"
             sbe_gpencil_stroke.target_selection_mode = "STROKE"
 
-            sbe_gpencil_segment = grease_pencil_row.operator(
+            sbe_gpencil_segment = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="GP_SELECT_BETWEEN_STROKES"
             )
             sbe_gpencil_segment.target_object_type = "GPENCIL"
             sbe_gpencil_segment.target_selection_mode = "SEGMENT"
 
-            # TODO add texture paint operators
-            texture_paint_row = grease_pencil_texture_paint_row.split(factor=0.333, align=True)
-            vertex_paint = texture_paint_row.operator(
+            selection_bulk_edit_box.separator()
+
+            vertex_paint = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToPaintTexture.bl_idname, text="", icon="VPAINT_HLT"
             )
-            vertex_paint.target_paint_mode = "VERTEX"
-            texture_paint = texture_paint_row.operator(
+            vertex_paint.target_paint_mode = "VERTEX_PAINT"
+            texture_paint = selection_bulk_edit_box.operator(
                 ALX_OT_ObjectMode_SetToPaintTexture.bl_idname, text="", icon="TPAINT_HLT"
             )
-            texture_paint.target_paint_mode = "TEXTURE"
-            texture_paint_row.separator()
+            texture_paint.target_paint_mode = "TEXTURE_PAINT"
+
 
 
         else:
