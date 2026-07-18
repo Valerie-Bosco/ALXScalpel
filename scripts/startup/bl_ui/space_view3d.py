@@ -91,6 +91,7 @@ class VIEW3D_HT_tool_header(Header):
             layout.popover("VIEW3D_PT_tools_brush_display")
 
         # NOTE: general mode options should be added to `draw_mode_settings`.
+        # match:
         if tool_mode == 'SCULPT':
             if is_valid_context:
                 draw_3d_brush_settings(layout, tool_mode)
@@ -2908,6 +2909,10 @@ class VIEW3D_MT_object_animation(Menu):
         layout.operator("grease_pencil.bake_grease_pencil_animation", text="Bake Object Transform to Grease Pencil...")
         layout.operator("anim.replace_action")
         layout.operator("anim.replace_action_new")
+
+        layout.separator()
+
+        layout.operator("anim.rotation_mode_convert")
 
 
 class VIEW3D_MT_object_rigid_body(Menu):
@@ -6382,7 +6387,6 @@ class ALX_OT_ObjectMode_SetToSculpt(bpy.types.Operator):
     bl_options = {"REGISTER"}
 
     def execute(self, context):
-
         if context.mode != "OBJECT":
             bpy.ops.object.mode_set(mode="OBJECT")
 
@@ -6396,6 +6400,27 @@ class ALX_OT_ObjectMode_SetToSculpt(bpy.types.Operator):
 
             context.view_layer.objects.active = sculpt_selection_override[0]
             bpy.ops.object.mode_set(mode="SCULPT")
+
+        return {"FINISHED"}
+
+
+class ALX_OT_ObjectMode_SetToPaintTexture(bpy.types.Operator):
+    bl_label = ""
+    bl_idname = "alx.operator_set_to_paint"
+    bl_options = {"REGISTER"}
+
+    target_paint_mode: bpy.props.StringProperty(default="VERTEX_PAINT", options={"HIDDEN"})
+
+    def execute(self, context):
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+
+        if (mesh := context.active_object) is not None and mesh.type == "MESH":
+            match self.target_paint_mode:
+                case "VERTEX_PAINT":
+                    bpy.ops.object.mode_set(mode="VERTEX_PAINT")
+                case "TEXTURE_PAINT":
+                    bpy.ops.object.mode_set(mode="TEXTURE_PAINT")
 
         return {"FINISHED"}
 
@@ -6486,7 +6511,7 @@ class VIEW3D_MT_object_mode_pie(Menu):
             sbe_lattice.target_object_type = "LATTICE"
             sbe_lattice.target_selection_mode = ""
 
-            grease_pencil_row = grease_pencil_texture_paint_row.row(align=True)
+            grease_pencil_row = grease_pencil_texture_paint_row.split(factor=0.333, align=True)
             sbe_gpencil_point = grease_pencil_row.operator(
                 ALX_OT_ObjectMode_SetToEditGeneric.bl_idname, text="", icon="GP_SELECT_POINTS"
             )
@@ -6506,6 +6531,17 @@ class VIEW3D_MT_object_mode_pie(Menu):
             sbe_gpencil_segment.target_selection_mode = "SEGMENT"
 
             # TODO add texture paint operators
+            texture_paint_row = grease_pencil_texture_paint_row.split(factor=0.333, align=True)
+            vertex_paint = texture_paint_row.operator(
+                ALX_OT_ObjectMode_SetToPaintTexture.bl_idname, text="", icon="VPAINT_HLT"
+            )
+            vertex_paint.target_paint_mode = "VERTEX"
+            texture_paint = texture_paint_row.operator(
+                ALX_OT_ObjectMode_SetToPaintTexture.bl_idname, text="", icon="TPAINT_HLT"
+            )
+            texture_paint.target_paint_mode = "TEXTURE"
+            texture_paint_row.separator()
+
 
         else:
             menu_pie.box().label(text="[Selection] [Missing]")
@@ -9711,6 +9747,7 @@ classes = (
     ALX_OT_ObjectMode_SetToEditMesh,
     ALX_OT_ObjectMode_SetToEditGeneric,
     ALX_OT_ObjectMode_SetToSculpt,
+    ALX_OT_ObjectMode_SetToPaintTexture,
     VIEW3D_HT_header,
     VIEW3D_HT_tool_header,
     VIEW3D_MT_editor_menus,
