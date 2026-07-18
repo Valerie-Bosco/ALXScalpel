@@ -106,7 +106,7 @@ def register_node_categories(identifier, cat_list):
         layout = self.layout
         col = layout.column(align=True)
         for item in self.category.items(context):
-            item.draw(item, col, context)
+            item.draw(item)
 
     menu_types = []
     for cat in cat_list:
